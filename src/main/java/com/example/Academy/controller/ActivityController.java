@@ -19,6 +19,11 @@ public class ActivityController {
         return activityService.save(activity);
     }
 
+    @GetMapping
+    public List<Activity> getAll() {
+        return activityService.getAll();
+    }
+
     @GetMapping("/cohort/{id}")
     public List<Activity> getByCohort(@PathVariable Long id) {
         return activityService.getByCohort(id);

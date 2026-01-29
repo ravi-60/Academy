@@ -20,4 +20,8 @@ public class ActivityService {
     public List<Activity> getByCohort(Long cohortId) {
         return activityRepository.findByCohortId(cohortId);
     }
+
+    public List<Activity> getAll() {
+        return activityRepository.findAll();
+    }
 }

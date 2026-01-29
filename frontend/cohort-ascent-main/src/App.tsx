@@ -17,6 +17,7 @@ import { Settings } from "./pages/Settings";
 import { Coaches } from "./pages/Coaches";
 import { Stakeholders } from "./pages/Stakeholders";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { Activity } from "./pages/Activity";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,7 @@ const App = () => (
               <Route path="/candidates" element={<Candidates />} />
               <Route path="/efforts" element={<DailyEfforts />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/activity" element={<Activity />} />
 
               {/* Admin Only Routes */}
               <Route

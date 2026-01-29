@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.Academy.dto.cohort.CohortResponse;
 
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -38,43 +37,57 @@ public class CohortService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ActivityRepository activityRepository;
+
     public Cohort createCohort(CreateCohortRequest request) {
 
-    Cohort cohort = new Cohort();
+        Cohort cohort = new Cohort();
 
-    cohort.setCode(request.getCode());
-    cohort.setBu(request.getBu());
-    cohort.setSkill(request.getSkill());
-    cohort.setTrainingLocation(request.getTrainingLocation());
-    cohort.setStartDate(LocalDate.parse(request.getStartDate()));
-    cohort.setEndDate(
-        request.getEndDate() != null
-            ? LocalDate.parse(request.getEndDate())
-            : null
-    );
-    cohort.setActiveGencCount(
-        request.getActiveGencCount() != null
-            ? request.getActiveGencCount()
-            : 0
-    );
+        cohort.setCode(request.getCode());
+        cohort.setBu(request.getBu());
+        cohort.setSkill(request.getSkill());
+        cohort.setTrainingLocation(request.getTrainingLocation());
+        cohort.setStartDate(LocalDate.parse(request.getStartDate()));
+        cohort.setEndDate(
+                request.getEndDate() != null
+                        ? LocalDate.parse(request.getEndDate())
+                        : null);
+        cohort.setActiveGencCount(
+                request.getActiveGencCount() != null
+                        ? request.getActiveGencCount()
+                        : 0);
 
-    //  SET COACH
-    if (request.getCoachId() != null) {
-        User coach = userRepository.findById(request.getCoachId())
-            .orElseThrow(() -> new RuntimeException("Coach not found"));
-        cohort.setCoach(coach);
+        // SET COACH
+        if (request.getCoachId() != null) {
+            User coach = userRepository.findById(request.getCoachId())
+                    .orElseThrow(() -> new RuntimeException("Coach not found"));
+            cohort.setCoach(coach);
+        }
+
+        // SET PRIMARY TRAINER
+        if (request.getPrimaryTrainerId() != null) {
+            User trainer = userRepository.findById(request.getPrimaryTrainerId())
+                    .orElseThrow(() -> new RuntimeException("Trainer not found"));
+            cohort.setPrimaryTrainer(trainer);
+        }
+
+        Cohort savedCohort = cohortRepository.save(cohort);
+
+        // LOG ACTIVITY: Coach Assigned
+        if (savedCohort.getCoach() != null) {
+            Activity activity = new Activity();
+            activity.setTitle("Mission Assignment");
+            activity.setDescription(
+                    "Coach " + savedCohort.getCoach().getName() + " has been assigned to " + savedCohort.getCode());
+            activity.setDate(java.time.LocalDateTime.now());
+            activity.setCoach(savedCohort.getCoach());
+            activity.setCohort(savedCohort);
+            activityRepository.save(activity);
+        }
+
+        return savedCohort;
     }
-
-    // SET PRIMARY TRAINER
-    if (request.getPrimaryTrainerId() != null) {
-        User trainer = userRepository.findById(request.getPrimaryTrainerId())
-            .orElseThrow(() -> new RuntimeException("Trainer not found"));
-        cohort.setPrimaryTrainer(trainer);
-    }
-
-    return cohortRepository.save(cohort);
-}
-
 
     public List<Cohort> getAllCohorts() {
         return cohortRepository.findAll();
@@ -107,49 +120,47 @@ public class CohortService {
         cohortRepository.deleteById(id);
     }
 
-
     public CohortResponse mapToResponse(Cohort c) {
-    CohortResponse dto = new CohortResponse();
+        CohortResponse dto = new CohortResponse();
 
-    dto.setId(c.getId());
-    dto.setCode(c.getCode());
-    dto.setBu(c.getBu());
-    dto.setSkill(c.getSkill());
-    dto.setActiveGencCount(c.getActiveGencCount());
-    dto.setTrainingLocation(c.getTrainingLocation());
-    dto.setStartDate(c.getStartDate());
-    dto.setEndDate(c.getEndDate());
+        dto.setId(c.getId());
+        dto.setCode(c.getCode());
+        dto.setBu(c.getBu());
+        dto.setSkill(c.getSkill());
+        dto.setActiveGencCount(c.getActiveGencCount());
+        dto.setTrainingLocation(c.getTrainingLocation());
+        dto.setStartDate(c.getStartDate());
+        dto.setEndDate(c.getEndDate());
 
-    dto.setProgress(
-        calculateProgress(c.getStartDate(), c.getEndDate())
-    );
+        dto.setProgress(
+                calculateProgress(c.getStartDate(), c.getEndDate()));
 
-    if (c.getCoach() != null) {
-        dto.setCoach(
-            new CohortResponse.UserSummary(
-                c.getCoach().getId(),
-                c.getCoach().getName()
-            )
-        );
+        if (c.getCoach() != null) {
+            dto.setCoach(
+                    new CohortResponse.UserSummary(
+                            c.getCoach().getId(),
+                            c.getCoach().getName()));
+        }
+
+        return dto;
     }
 
-    return dto;
-}
-
-
     private int calculateProgress(LocalDate start, LocalDate end) {
-    if (start == null || end == null) return 0;
+        if (start == null || end == null)
+            return 0;
 
-    LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now();
 
-    if (today.isBefore(start)) return 0;
-    if (today.isAfter(end)) return 100;
+        if (today.isBefore(start))
+            return 0;
+        if (today.isAfter(end))
+            return 100;
 
-    long totalDays = java.time.temporal.ChronoUnit.DAYS.between(start, end);
-    long elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, today);
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(start, end);
+        long elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(start, today);
 
-    return (int) ((elapsedDays * 100) / totalDays);
-}
+        return (int) ((elapsedDays * 100) / totalDays);
+    }
 
     // Trainer management
     public void assignPrimaryTrainer(Long cohortId, Long trainerId) {
