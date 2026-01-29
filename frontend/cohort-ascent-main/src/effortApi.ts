@@ -39,6 +39,7 @@ export interface WeeklySummary {
   buddyMentorHours: number;
   submittedBy?: string;
   submittedAt?: string;
+  holidays?: string;
 }
 
 export interface EffortDetail {
@@ -63,9 +64,8 @@ export interface WeeklyEffortSubmission {
   weekEndDate: string;
   holidays: string[];
   dayLogs: DayLog[];
-  submittedBy?: string;
-  submittedAt?: string;
-  status: 'PENDING' | 'COMPLETED';
+  submittedBy: string;
+  status: 'COMPLETED' | 'PENDING';
 }
 
 export const effortApi = {

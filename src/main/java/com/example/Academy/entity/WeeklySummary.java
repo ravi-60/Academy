@@ -44,6 +44,9 @@ public class WeeklySummary {
     @Column(name = "buddy_mentor_hours", precision = 10, scale = 2)
     private BigDecimal buddyMentorHours;
 
+    @Column(name = "holidays", columnDefinition = "LONGTEXT")
+    private String holidays;
+
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
@@ -164,5 +167,13 @@ public class WeeklySummary {
 
     public void setSubmittedBy(String submittedBy) {
         this.submittedBy = submittedBy;
+    }
+
+    public String getHolidays() {
+        return holidays;
+    }
+
+    public void setHolidays(String holidays) {
+        this.holidays = holidays;
     }
 }

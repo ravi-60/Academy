@@ -54,4 +54,6 @@ export const cohortApi = {
   createCohort: (cohort: CreateCohortRequest) => api.post('/cohorts', cohort),
   updateCohort: (id: number, cohort: Partial<Cohort>) => api.put(`/cohorts/${id}`, cohort),
   deleteCohort: (id: number) => api.delete(`/cohorts/${id}`),
+  getAdditionalTrainers: (cohortId: number) => api.get(`/cohorts/${cohortId}/trainers/additional`),
+  getAdditionalMentors: (cohortId: number) => api.get(`/cohorts/${cohortId}/mentors/additional`),
 };

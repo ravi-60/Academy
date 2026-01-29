@@ -67,7 +67,14 @@ public class MentorService {
                     CohortMentorMapping mapping = new CohortMentorMapping();
                     mapping.setCohort(cohort);
                     mapping.setMentor(mentor);
-                    mapping.setRole(CohortMentorMapping.Role.MENTOR);
+
+                    // Set role based on mentor's profession
+                    if (mentor.getMentorType() == Mentor.MentorType.buddy) {
+                        mapping.setRole(CohortMentorMapping.Role.BUDDY_MENTOR);
+                    } else {
+                        mapping.setRole(CohortMentorMapping.Role.MENTOR);
+                    }
+
                     mapping.setCreatedAt(LocalDateTime.now());
                     mappingRepository.save(mapping);
                 }

@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -124,12 +125,13 @@ public class EffortService {
                 BigDecimal.valueOf(techHours != null ? techHours : 0),
                 BigDecimal.valueOf(bhHours != null ? bhHours : 0),
                 BigDecimal.valueOf(mentorHours != null ? mentorHours : 0),
-                BigDecimal.valueOf(buddyHours != null ? buddyHours : 0));
+                BigDecimal.valueOf(buddyHours != null ? buddyHours : 0),
+                null); // Default null if called from individual updates
     }
 
     private void updateWeeklySummaryWithTotals(Cohort cohort, LocalDate weekStart, String submittedByName,
             BigDecimal totalHours, BigDecimal techHours, BigDecimal bhHours, BigDecimal mentorHours,
-            BigDecimal buddyHours) {
+            BigDecimal buddyHours, List<LocalDate> holidays) {
         LocalDate weekEnd = weekStart.plusDays(6);
 
         // Find or create weekly summary
@@ -152,6 +154,14 @@ public class EffortService {
         summary.setBehavioralTrainerHours(bhHours);
         summary.setMentorHours(mentorHours);
         summary.setBuddyMentorHours(buddyHours);
+
+        // Set holidays if provided
+        if (holidays != null) {
+            String holidaysStr = holidays.stream()
+                    .map(LocalDate::toString)
+                    .collect(Collectors.joining(","));
+            summary.setHolidays(holidaysStr);
+        }
 
         // Set submission metadata
         summary.setSubmittedBy(submittedByName);
@@ -247,7 +257,7 @@ public class EffortService {
         totalH = techH.add(bhH).add(mentorH).add(buddyH);
 
         updateWeeklySummaryWithTotals(cohort, dto.getWeekStartDate(), submittedBy.getName(), totalH, techH, bhH,
-                mentorH, buddyH);
+                mentorH, buddyH, dto.getHolidays());
     }
 
     private void saveDayEffort(Cohort cohort, User stakeholder, StakeholderEffort.Role role,

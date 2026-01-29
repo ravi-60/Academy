@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
-import { useCohorts, useCohort } from '@/hooks/useCohortsBackend';
+import { useCohorts, useCohort, useAdditionalTrainers, useAdditionalMentors } from '@/hooks/useCohortsBackend';
 import { useSubmitWeeklyEffort, useWeeklySummaries, useEffortsByCohortAndRange } from '@/hooks/useEffortsBackend';
 import { generateCalendarWeeks } from '@/utils/dateUtils';
 import { cn } from '@/lib/utils';
@@ -47,15 +47,7 @@ import { DayLog, WeeklyEffortSubmission } from '@/effortApi';
 import { useAuthStore } from '@/stores/authStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Mock location-based holidays for demonstration
-const GET_HOLIDAYS = (location: string) => {
-  const holidays: Record<string, string[]> = {
-    'Bangalore': ['2026-01-26', '2026-03-08'],
-    'Chennai': ['2026-01-26', '2026-04-14'],
-    'Pune': ['2026-01-26', '2026-05-01'],
-  };
-  return holidays[location] || ['2026-01-26'];
-};
+
 
 export const DailyEfforts = () => {
   const { user } = useAuthStore();
@@ -111,16 +103,75 @@ export const DailyEfforts = () => {
   }, [calendarWeeks, selectedWeekId]);
 
   const { data: weeklySummaries = [] } = useWeeklySummaries(selectedCohortId || 0);
+  const { data: mappingTrainers = [] } = useAdditionalTrainers(selectedCohortId || 0);
+  const { data: mappingMentors = [] } = useAdditionalMentors(selectedCohortId || 0);
   const { data: existingEfforts = [] } = useEffortsByCohortAndRange(
     selectedCohortId || 0,
     selectedWeek ? format(selectedWeek.startDate, 'yyyy-MM-dd') : '',
     selectedWeek ? format(selectedWeek.endDate, 'yyyy-MM-dd') : ''
   );
 
-  const holidays = useMemo(() => {
+  const visibleSections = useMemo(() => {
     if (!cohortDetail) return [];
-    return GET_HOLIDAYS(cohortDetail.trainingLocation);
-  }, [cohortDetail]);
+
+    const sections = [];
+
+    // Technical Trainer
+    const techMapped = mappingTrainers
+      .filter((m: any) => m.role === 'TRAINER')
+      .map((m: any) => `${m.trainer.name} (${m.trainer.is_internal ? 'Internal' : 'External'})`);
+    const techName = techMapped.join(', ') || cohortDetail.primaryTrainer?.name || (cohortDetail as any).trainerName;
+    if (techName) {
+      sections.push({
+        id: 'technicalTrainer',
+        title: 'Technical Trainer',
+        name: techName,
+      });
+    }
+
+    // Behavioral Trainer
+    const bhMapped = mappingTrainers
+      .filter((m: any) => m.role === 'BH_TRAINER')
+      .map((m: any) => `${m.trainer.name} (${m.trainer.is_internal ? 'Internal' : 'External'})`);
+    const bhName = bhMapped.join(', ') || cohortDetail.behavioralTrainer?.name;
+    if (bhName) {
+      sections.push({
+        id: 'behavioralTrainer',
+        title: 'Behavioral Trainer',
+        name: bhName,
+      });
+    }
+
+    // Primary Mentor
+    const mentorMapped = mappingMentors
+      .filter((m: any) => m.role === 'MENTOR')
+      .map((m: any) => `${m.mentor.name} (${m.mentor.is_internal ? 'Internal' : 'External'})`);
+    const mentorName = mentorMapped.join(', ') || cohortDetail.primaryMentor?.name;
+    if (mentorName) {
+      sections.push({
+        id: 'mentor',
+        title: 'Primary Mentor',
+        name: mentorName,
+      });
+    }
+
+    // Buddy Mentor
+    const buddyMapped = mappingMentors
+      .filter((m: any) => m.role === 'BUDDY_MENTOR')
+      .map((m: any) => `${m.mentor.name} (${m.mentor.is_internal ? 'Internal' : 'External'})`);
+    const buddyName = buddyMapped.join(', ') || cohortDetail.buddyMentor?.name;
+    if (buddyName) {
+      sections.push({
+        id: 'buddyMentor',
+        title: 'Buddy Mentor',
+        name: buddyName,
+      });
+    }
+
+    return sections;
+  }, [cohortDetail, mappingTrainers, mappingMentors]);
+
+
 
   // Initialize local day logs
   useEffect(() => {
@@ -130,13 +181,18 @@ export const DailyEfforts = () => {
         end: addDays(selectedWeek.startDate, 4), // Monday to Friday
       });
 
+      const currentSummary = weeklySummaries.find(s => s.weekStartDate === format(selectedWeek.startDate, 'yyyy-MM-dd'));
+      const summaryHolidays = currentSummary?.holidays?.split(',') || [];
+
       const initialLogs: Record<string, DayLog> = {};
       const initialSaved: Record<string, boolean> = {};
 
       days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const dayEfforts = (existingEfforts as any[]).filter(e => e.effortDate === dateStr);
-        const isHoliday = holidays.includes(dateStr);
+
+        // Load holiday status from summary or efforts
+        const isHoliday = summaryHolidays.includes(dateStr) || dayEfforts.some(e => (e as any).isHoliday);
 
         initialLogs[dateStr] = {
           date: dateStr,
@@ -156,18 +212,15 @@ export const DailyEfforts = () => {
           buddyMentor: {
             hours: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.effortHours || 0,
             notes: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.areaOfWork || '',
-          },
+          }
         };
-
-        // If data exists, mark as saved
-        if (dayEfforts.length > 0) {
-          initialSaved[dateStr] = true;
-        }
+        initialSaved[dateStr] = dayEfforts.length > 0;
       });
+
       setLocalDayLogs(initialLogs);
       setSavedDays(initialSaved);
     }
-  }, [selectedWeek, existingEfforts, cohortDetail, holidays]);
+  }, [selectedWeek, existingEfforts, cohortDetail, weeklySummaries]);
 
   const weekStats = useMemo(() => {
     let tech = 0, behavioral = 0, mentor = 0, buddy = 0;
@@ -207,6 +260,25 @@ export const DailyEfforts = () => {
     setSavedDays(prev => ({ ...prev, [date]: false }));
   };
 
+  const handleToggleHoliday = (date: string) => {
+    setLocalDayLogs(prev => {
+      const isCurrentlyHoliday = prev[date]?.isHoliday;
+      return {
+        ...prev,
+        [date]: {
+          ...prev[date],
+          isHoliday: !isCurrentlyHoliday,
+          // Reset hours if marking as holiday
+          technicalTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].technicalTrainer,
+          behavioralTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].behavioralTrainer,
+          mentor: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].mentor,
+          buddyMentor: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].buddyMentor,
+        }
+      };
+    });
+    setSavedDays(prev => ({ ...prev, [date]: false }));
+  };
+
   const handleSaveDay = (date: string) => {
     setSavedDays(prev => ({ ...prev, [date]: true }));
     toast.success(`Progress saved for ${format(parseISO(date), 'EEEE, MMM dd')}`, {
@@ -238,8 +310,8 @@ export const DailyEfforts = () => {
       location: cohortDetail.trainingLocation,
       weekStartDate: format(selectedWeek.startDate, 'yyyy-MM-dd'),
       weekEndDate: format(selectedWeek.endDate, 'yyyy-MM-dd'),
-      holidays: holidays,
-      dayLogs: days,
+      holidays: Object.values(localDayLogs).filter(d => d.isHoliday).map(d => d.date),
+      dayLogs: Object.values(localDayLogs),
       submittedBy: user.name,
       status: 'COMPLETED'
     };
@@ -743,9 +815,8 @@ export const DailyEfforts = () => {
                   const today = startOfToday();
                   const isFuture = isAfter(day, today);
                   const isToday = isSameDay(day, today);
-                  const isHoliday = holidays.includes(dateStr);
                   const isSaved = savedDays[dateStr];
-                  const isDisabled = isFuture || isHoliday || isWeekCompleted;
+                  const isDisabled = isFuture || log.isHoliday || isWeekCompleted;
 
                   return (
                     <GlassCard
@@ -758,10 +829,10 @@ export const DailyEfforts = () => {
                       )}
                       glow={isToday ? "cyan" : "none"}
                     >
-                      {/* 6. Holiday Logic */}
-                      {isHoliday && (
-                        <div className="absolute inset-0 z-20 bg-background/50 backdrop-blur-[2px] rounded-3xl flex items-center justify-center">
-                          <div className="bg-orange-500/15 border border-orange-500/30 px-8 py-4 rounded-3xl flex items-center gap-4 shadow-xl">
+                      {/* 6. Holiday Logic Overlay */}
+                      {log.isHoliday && (
+                        <div className="absolute inset-x-0 bottom-0 top-32 z-20 bg-background/50 backdrop-blur-[2px] rounded-b-3xl flex items-center justify-center">
+                          <div className="bg-orange-500/15 border border-orange-500/30 px-8 py-4 rounded-3xl flex items-center gap-4 shadow-xl pointer-events-none">
                             <div className="p-3 bg-orange-500/20 rounded-2xl">
                               <AlertCircle className="h-6 w-6 text-orange-400" />
                             </div>
@@ -774,28 +845,54 @@ export const DailyEfforts = () => {
                       )}
 
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-4">
-                            <h4 className="text-4xl lg:text-5xl font-black text-foreground tracking-tighter uppercase">{format(day, 'EEEE')}</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {isToday && (
-                                <span className="px-3 py-1 bg-primary text-white text-[10px] font-black uppercase rounded shadow-neon-blue tracking-widest">Today</span>
-                              )}
-                              {isFuture && (
-                                <span className="px-3 py-1 bg-muted/50 text-muted-foreground text-[10px] font-black uppercase rounded border border-border/50 flex items-center gap-1">
-                                  <Lock className="h-3 w-3" /> Future
-                                </span>
-                              )}
-                              {isWeekCompleted && (
-                                <span className="px-3 py-1 bg-emerald-500/15 text-emerald-400 text-[10px] font-black uppercase rounded border border-emerald-500/20 flex items-center gap-1">
-                                  <CheckCircle2 className="h-3 w-3" /> Logged
-                                </span>
-                              )}
+                        <div className="space-y-6">
+                          <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-4">
+                              <h4 className="text-4xl lg:text-5xl font-black text-foreground tracking-tighter uppercase leading-none">{format(day, 'EEEE')}</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {isToday && (
+                                  <span className="px-3 py-1 bg-primary text-white text-[10px] font-black uppercase rounded shadow-neon-blue tracking-widest">Today</span>
+                                )}
+                                {isFuture && (
+                                  <span className="px-3 py-1 bg-muted/50 text-muted-foreground text-[10px] font-black uppercase rounded border border-border/50 flex items-center gap-1">
+                                    <Lock className="h-3 w-3" /> Future
+                                  </span>
+                                )}
+                                {isWeekCompleted && (
+                                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-400 text-[10px] font-black uppercase rounded border border-emerald-500/20 flex items-center gap-1">
+                                    <CheckCircle2 className="h-3 w-3" /> Logged
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2 text-muted-foreground font-black text-sm uppercase tracking-widest">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            {format(day, 'MMMM dd, yyyy')}
+
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2 text-muted-foreground font-black text-sm uppercase tracking-widest">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                {format(day, 'MMMM dd, yyyy')}
+                              </div>
+                              <div className="h-4 w-px bg-border/50" />
+                              <button
+                                onClick={() => handleToggleHoliday(dateStr)}
+                                disabled={isDisabled && !log.isHoliday || isWeekCompleted}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest",
+                                  log.isHoliday
+                                    ? "bg-orange-500/20 border-orange-500/40 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+                                    : "bg-muted/10 border-border/50 text-muted-foreground hover:border-primary/30 hover:text-primary"
+                                )}
+                              >
+                                {log.isHoliday ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5" /> Holiday Marked
+                                  </>
+                                ) : (
+                                  <>
+                                    <Calendar className="h-3.5 w-3.5" /> Mark Holiday
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
 
@@ -817,45 +914,18 @@ export const DailyEfforts = () => {
 
                       {/* Sections Grid */}
                       <div className="grid gap-8">
-                        <LogRoleSection
-                          title="Technical Trainer"
-                          name={cohortDetail?.primaryTrainer?.name || (cohortDetail as any)?.trainerName || "Unassigned"}
-                          hours={log.technicalTrainer?.hours || 0}
-                          notes={log.technicalTrainer?.notes || ""}
-                          disabled={isDisabled}
-                          onChangeHours={(h) => handleUpdateLog(dateStr, 'technicalTrainer', 'hours', h)}
-                          onChangeNotes={(n) => handleUpdateLog(dateStr, 'technicalTrainer', 'notes', n)}
-                        />
-
-                        <LogRoleSection
-                          title="Behavioral Trainer"
-                          name={cohortDetail?.behavioralTrainer?.name || "Unassigned"}
-                          hours={log.behavioralTrainer?.hours || 0}
-                          notes={log.behavioralTrainer?.notes || ""}
-                          disabled={isDisabled}
-                          onChangeHours={(h) => handleUpdateLog(dateStr, 'behavioralTrainer', 'hours', h)}
-                          onChangeNotes={(n) => handleUpdateLog(dateStr, 'behavioralTrainer', 'notes', n)}
-                        />
-
-                        <LogRoleSection
-                          title="Primary Mentor"
-                          name={cohortDetail?.primaryMentor?.name || "Unassigned"}
-                          hours={log.mentor?.hours || 0}
-                          notes={log.mentor?.notes || ""}
-                          disabled={isDisabled}
-                          onChangeHours={(h) => handleUpdateLog(dateStr, 'mentor', 'hours', h)}
-                          onChangeNotes={(n) => handleUpdateLog(dateStr, 'mentor', 'notes', n)}
-                        />
-
-                        <LogRoleSection
-                          title="Buddy Mentor"
-                          name={cohortDetail?.buddyMentor?.name || "Unassigned"}
-                          hours={log.buddyMentor?.hours || 0}
-                          notes={log.buddyMentor?.notes || ""}
-                          disabled={isDisabled}
-                          onChangeHours={(h) => handleUpdateLog(dateStr, 'buddyMentor', 'hours', h)}
-                          onChangeNotes={(n) => handleUpdateLog(dateStr, 'buddyMentor', 'notes', n)}
-                        />
+                        {visibleSections.map((section) => (
+                          <LogRoleSection
+                            key={section.id}
+                            title={section.title}
+                            name={section.name}
+                            hours={(log as any)[section.id]?.hours || 0}
+                            notes={(log as any)[section.id]?.notes || ""}
+                            disabled={isDisabled}
+                            onChangeHours={(h) => handleUpdateLog(dateStr, section.id as any, 'hours', h)}
+                            onChangeNotes={(n) => handleUpdateLog(dateStr, section.id as any, 'notes', n)}
+                          />
+                        ))}
                       </div>
                     </GlassCard>
                   );
@@ -937,10 +1007,6 @@ const LogRoleSection = ({ title, name, hours, notes, disabled, onChangeHours, on
       <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-2">{title}</p>
       <div className="space-y-1">
         <h5 className="text-base font-black text-foreground leading-tight">{name}</h5>
-        <div className="flex items-center gap-2">
-          <div className={cn("h-1.5 w-1.5 rounded-full", hours > 0 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-muted-foreground/30")} />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase">{hours > 0 ? "Entry Active" : "No Entry"}</p>
-        </div>
       </div>
     </div>
 

@@ -67,7 +67,14 @@ public class TrainerService {
                     CohortTrainerMapping mapping = new CohortTrainerMapping();
                     mapping.setCohort(cohort);
                     mapping.setTrainer(trainer);
-                    mapping.setRole(CohortTrainerMapping.Role.TRAINER);
+
+                    // Set role based on trainer's profession
+                    if (trainer.getTrainerType() == Trainer.TrainerType.behavioral) {
+                        mapping.setRole(CohortTrainerMapping.Role.BH_TRAINER);
+                    } else {
+                        mapping.setRole(CohortTrainerMapping.Role.TRAINER);
+                    }
+
                     mapping.setCreatedAt(LocalDateTime.now());
                     mappingRepository.save(mapping);
                 }

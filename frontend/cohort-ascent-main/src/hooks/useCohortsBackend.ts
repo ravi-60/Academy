@@ -79,3 +79,25 @@ export const useDeleteCohort = () => {
     },
   });
 };
+
+export const useAdditionalTrainers = (cohortId: number) => {
+  return useQuery({
+    queryKey: ['cohorts', cohortId, 'trainers', 'additional'],
+    queryFn: async () => {
+      const response = await cohortApi.getAdditionalTrainers(cohortId);
+      return response.data;
+    },
+    enabled: !!cohortId,
+  });
+};
+
+export const useAdditionalMentors = (cohortId: number) => {
+  return useQuery({
+    queryKey: ['cohorts', cohortId, 'mentors', 'additional'],
+    queryFn: async () => {
+      const response = await cohortApi.getAdditionalMentors(cohortId);
+      return response.data;
+    },
+    enabled: !!cohortId,
+  });
+};

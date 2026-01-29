@@ -10,6 +10,7 @@ public class WeeklyEffortSubmissionDTO {
     private List<DayLogDTO> dayLogs;
     private String location;
     private Long coachId;
+    private List<LocalDate> holidays;
 
     public WeeklyEffortSubmissionDTO() {
     }
@@ -60,5 +61,13 @@ public class WeeklyEffortSubmissionDTO {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public List<LocalDate> getHolidays() {
+        return holidays;
+    }
+
+    public void setHolidays(List<LocalDate> holidays) {
+        this.holidays = holidays;
     }
 }

@@ -12,8 +12,36 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { StatsCard } from '@/components/ui/StatsCard';
+import { reportApi, ReportResponse } from '@/reportApi';
+import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
 
 export const Reports = () => {
+  const [reportData, setReportData] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await reportApi.getReportData();
+        setReportData(response.data);
+      } catch (error) {
+        console.error('Failed to fetch report data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -42,36 +70,28 @@ export const Reports = () => {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Effort Hours"
-          value="1,248"
-          change="+156 this week"
-          changeType="positive"
+          value={reportData?.stats.totalEffortHours.toLocaleString() || '0'}
           icon={Clock}
           iconColor="cyan"
           delay={0.1}
         />
         <StatsCard
-          title="Active Trainers"
-          value="24"
-          change="+3 assigned"
-          changeType="positive"
+          title="No. of Active Trainers"
+          value={reportData?.stats.totalTrainers.toString() || '0'}
           icon={Users}
           iconColor="violet"
           delay={0.2}
         />
         <StatsCard
-          title="Completion Rate"
-          value="87%"
-          change="+5% vs last week"
-          changeType="positive"
+          title="Total No. of Mentors"
+          value={reportData?.stats.totalMentors.toString() || '0'}
           icon={TrendingUp}
           iconColor="success"
           delay={0.3}
         />
         <StatsCard
           title="Reports Generated"
-          value="12"
-          change="This month"
-          changeType="neutral"
+          value={reportData?.stats.reportsGenerated.toString() || '0'}
           icon={FileText}
           iconColor="blue"
           delay={0.4}
@@ -87,10 +107,20 @@ export const Reports = () => {
         >
           <GlassCard className="p-6">
             <h3 className="mb-4 text-lg font-semibold text-foreground">Effort Distribution</h3>
-            <div className="flex h-64 items-center justify-center rounded-lg border border-border/30 bg-muted/20">
-              <div className="text-center">
-                <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">Chart visualization</p>
+            <div className="h-64 rounded-lg border border-border/30 bg-muted/20 p-4">
+              <div className="space-y-3 overflow-y-auto h-full">
+                {reportData?.distribution.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                    <div className="flex flex-1 mx-4 h-2 bg-muted/30 rounded-full overflow-hidden">
+                      <div
+                        className="bg-primary/60 h-full"
+                        style={{ width: `${Math.min((item.value / (reportData.stats.totalEffortHours || 1)) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{item.value}h</span>
+                  </div>
+                )) || <div className="flex h-full items-center justify-center text-muted-foreground">No data available</div>}
               </div>
             </div>
           </GlassCard>
@@ -103,10 +133,20 @@ export const Reports = () => {
         >
           <GlassCard className="p-6">
             <h3 className="mb-4 text-lg font-semibold text-foreground">Trainer Utilization</h3>
-            <div className="flex h-64 items-center justify-center rounded-lg border border-border/30 bg-muted/20">
-              <div className="text-center">
-                <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <p className="mt-4 text-muted-foreground">Chart visualization</p>
+            <div className="h-64 rounded-lg border border-border/30 bg-muted/20 p-4">
+              <div className="space-y-3 overflow-y-auto h-full">
+                {reportData?.utilization.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground truncate w-24">{item.label}</span>
+                    <div className="flex flex-1 mx-4 h-2 bg-muted/30 rounded-full overflow-hidden">
+                      <div
+                        className="bg-accent/60 h-full"
+                        style={{ width: `${Math.min((item.value / (reportData.stats.totalEffortHours || 1)) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium">{item.value}h</span>
+                  </div>
+                )) || <div className="flex h-full items-center justify-center text-muted-foreground">No data available</div>}
               </div>
             </div>
           </GlassCard>
@@ -120,67 +160,41 @@ export const Reports = () => {
         transition={{ delay: 0.5 }}
       >
         <GlassCard className="p-6">
-          <h3 className="mb-6 text-lg font-semibold text-foreground">Recent Reports</h3>
+          <h3 className="mb-6 text-lg font-semibold text-foreground">Recent Activity Logs</h3>
           <div className="space-y-4">
-            {[
-              { name: 'Weekly Effort Report - Week 3', date: 'Jan 19, 2024', type: 'Excel' },
-              { name: 'Monthly Summary - December', date: 'Jan 05, 2024', type: 'PDF' },
-              { name: 'Cohort Alpha Progress Report', date: 'Jan 03, 2024', type: 'PDF' },
-              { name: 'Trainer Utilization Q4', date: 'Dec 31, 2023', type: 'Excel' },
-            ].map((report, index) => (
-              <motion.div
-                key={report.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + index * 0.1 }}
-                className="flex items-center justify-between rounded-lg border border-border/30 bg-muted/20 p-4 transition-all hover:border-primary/30 hover:bg-muted/40"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <FileText className="h-5 w-5 text-primary" />
+            {reportData?.recentReports.length ? (
+              reportData.recentReports.map((report, index) => (
+                <motion.div
+                  key={report.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 + index * 0.1 }}
+                  className="flex items-center justify-between rounded-lg border border-border/30 bg-muted/20 p-4 transition-all hover:border-primary/30 hover:bg-muted/40"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{report.title}</p>
+                      <p className="text-sm text-muted-foreground">{report.description} • {report.date}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">{report.name}</p>
-                    <p className="text-sm text-muted-foreground">Generated {report.date}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="badge-status bg-muted text-muted-foreground font-mono">LOG</span>
+                    <GradientButton variant="ghost" size="sm" icon={<Download className="h-4 w-4" />}>
+                      Download
+                    </GradientButton>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="badge-status bg-muted text-muted-foreground">{report.type}</span>
-                  <GradientButton variant="ghost" size="sm" icon={<Download className="h-4 w-4" />}>
-                    Download
-                  </GradientButton>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">No recent activities found</div>
+            )}
           </div>
         </GlassCard>
       </motion.div>
 
-      {/* Weekly Submission */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-      >
-        <GlassCard variant="feature" className="p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/20">
-                <Calendar className="h-6 w-6 text-warning" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">Weekly Final Submission</h3>
-                <p className="text-muted-foreground">
-                  Submit your weekly effort summary by Friday EOD
-                </p>
-              </div>
-            </div>
-            <GradientButton variant="primary">
-              Submit Weekly Report
-            </GradientButton>
-          </div>
-        </GlassCard>
-      </motion.div>
     </div>
   );
 };
