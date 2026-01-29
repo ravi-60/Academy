@@ -5,7 +5,6 @@ import com.example.Academy.dto.report.ReportResponseDTO;
 import com.example.Academy.dto.report.ReportStatsDTO;
 import com.example.Academy.entity.StakeholderEffort;
 import com.example.Academy.repository.ActivityRepository;
-import com.example.Academy.repository.CohortRepository;
 import com.example.Academy.repository.MentorRepository;
 import com.example.Academy.repository.StakeholderEffortRepository;
 import com.example.Academy.repository.TrainerRepository;
@@ -29,9 +28,6 @@ public class ReportService {
 
         @Autowired
         private ActivityRepository activityRepository;
-
-        @Autowired
-        private CohortRepository cohortRepository;
 
         @Autowired
         private TrainerRepository trainerRepository;

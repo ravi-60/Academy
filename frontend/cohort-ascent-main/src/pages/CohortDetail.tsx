@@ -19,7 +19,12 @@ import {
   Edit2,
   Trash2,
 } from 'lucide-react';
-import { useCohorts, useCohort } from '@/hooks/useCohortsBackend';
+import {
+  useCohorts,
+  useCohort,
+  useAdditionalTrainers,
+  useAdditionalMentors
+} from '@/hooks/useCohortsBackend';
 import { useSubmitWeeklyEffort, useWeeklySummaries, useEffortsByCohortAndRange, useEffortsByCohort } from '@/hooks/useEffortsBackend';
 import { Cohort } from '@/integrations/backend/cohortApi';
 import { useCohortStore } from '@/stores/cohortStore';
@@ -53,6 +58,7 @@ export const CohortDetail = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const { data: cohort, isLoading: loading, error } = useCohort(id ? parseInt(id) : 0);
+  const { data: candidates = [] } = useCandidates(id ? id : '');
 
   if (loading) {
     return (
@@ -102,7 +108,7 @@ export const CohortDetail = () => {
                   <span>•</span>
                   <span>{cohort.skill}</span>
                   <span>•</span>
-                  <span>{cohort.activeGencCount} candidates</span>
+                  <span>{candidates.length} candidates</span>
                 </div>
               </div>
             </div>
@@ -268,7 +274,7 @@ const OverviewTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Total Candidates</span>
-            <span className="font-semibold text-foreground">{cohort.activeGencCount}</span>
+            <span className="font-semibold text-foreground">{candidates.length}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Trainers</span>
@@ -880,7 +886,39 @@ interface EffortsTabProps {
 
 const EffortsTab = ({ cohortId }: EffortsTabProps) => {
   const navigate = useNavigate();
-  const { data: efforts = [], isLoading } = useEffortsByCohort(parseInt(cohortId));
+  const idNum = parseInt(cohortId);
+  const { data: efforts = [], isLoading } = useEffortsByCohort(idNum);
+  const { data: mappingTrainers = [] } = useAdditionalTrainers(idNum);
+  const { data: mappingMentors = [] } = useAdditionalMentors(idNum);
+  const { data: cohort } = useCohort(cohortId);
+
+  const getStakeholderName = (effort: any) => {
+    if (effort.trainerMentor?.name) return effort.trainerMentor.name;
+
+    // Fallback to mappings based on role
+    if (effort.role === 'TRAINER') {
+      const tech = mappingTrainers.filter((m: any) => m.role === 'TRAINER');
+      if (tech.length > 0) return tech.map((m: any) => m.trainer.name).join(', ');
+      return cohort?.primaryTrainer?.name || 'Unassigned';
+    }
+    if (effort.role === 'BH_TRAINER') {
+      const bh = mappingTrainers.filter((m: any) => m.role === 'BH_TRAINER');
+      if (bh.length > 0) return bh.map((m: any) => m.trainer.name).join(', ');
+      return cohort?.behavioralTrainer?.name || 'Unassigned';
+    }
+    if (effort.role === 'MENTOR') {
+      const mentors = mappingMentors.filter((m: any) => m.role === 'MENTOR');
+      if (mentors.length > 0) return mentors.map((m: any) => m.mentor.name).join(', ');
+      return cohort?.primaryMentor?.name || 'Unassigned';
+    }
+    if (effort.role === 'BUDDY_MENTOR') {
+      const buddies = mappingMentors.filter((m: any) => m.role === 'BUDDY_MENTOR');
+      if (buddies.length > 0) return buddies.map((m: any) => m.mentor.name).join(', ');
+      return cohort?.buddyMentor?.name || 'Unassigned';
+    }
+
+    return 'Unassigned';
+  };
 
   const groupedByDate = efforts.reduce((acc, effort) => {
     const date = effort.effortDate;
@@ -930,7 +968,7 @@ const EffortsTab = ({ cohortId }: EffortsTabProps) => {
                           <Calendar className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{effort.trainerMentor?.name || 'Unassigned'}</p>
+                          <p className="font-medium text-foreground">{getStakeholderName(effort)}</p>
                           <p className="text-sm text-muted-foreground">
                             {effort.role} • {effort.areaOfWork}
                           </p>

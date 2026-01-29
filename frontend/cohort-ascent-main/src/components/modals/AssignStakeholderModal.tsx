@@ -38,7 +38,7 @@ export const AssignStakeholderModal = ({
     const stakeholders = type === 'trainer' ? trainers : mentors;
     const filtered = stakeholders.filter(s =>
         !excludeIds.includes(s.id) &&
-        s.status === 'ACTIVE' &&
+        s.status?.toUpperCase() === 'ACTIVE' &&
         (s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (s as any).empId?.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -64,7 +64,7 @@ export const AssignStakeholderModal = ({
                         />
                     </div>
 
-                    <ScrollArea className="h-[300px] pr-4">
+                    <ScrollArea className="h-[350px] pr-4">
                         <div className="space-y-3">
                             {(loadingTrainers || loadingMentors) ? (
                                 <div className="py-8 text-center text-sm text-muted-foreground">Loading...</div>
@@ -75,11 +75,11 @@ export const AssignStakeholderModal = ({
                                     <GlassCard
                                         key={s.id}
                                         variant="hover"
-                                        className="flex cursor-pointer items-center justify-between p-3"
+                                        className="flex cursor-pointer items-center justify-between p-4 group"
                                         onClick={() => onAssign(s.id)}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary">
+                                            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-sm font-bold text-primary">
                                                 {s.avatar_url ? (
                                                     <img src={s.avatar_url} alt={s.name} className="h-full w-full object-cover" />
                                                 ) : (
@@ -87,7 +87,12 @@ export const AssignStakeholderModal = ({
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold">{s.name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-semibold">{s.name}</p>
+                                                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">
+                                                        {(s as any).type}
+                                                    </span>
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">{s.email}</p>
                                             </div>
                                         </div>

@@ -71,7 +71,7 @@ export const Stakeholders = () => {
     createTrainer.mutate({
       trainer: {
         ...data,
-        status: 'active',
+        status: 'ACTIVE',
       },
       cohortId: selectedCohort !== 'all' ? selectedCohort : undefined,
     }, {
@@ -83,7 +83,7 @@ export const Stakeholders = () => {
     createMentor.mutate({
       mentor: {
         ...data,
-        status: 'active',
+        status: 'ACTIVE',
       },
       cohortId: selectedCohort !== 'all' ? selectedCohort : undefined,
     }, {
@@ -331,7 +331,7 @@ export const Stakeholders = () => {
                       <div>
                         <h3 className="font-semibold text-foreground">{mentor.name}</h3>
                         <span className="text-sm capitalize text-muted-foreground">
-                          Mentor
+                          {mentor.type} Mentor
                         </span>
                       </div>
                     </div>
