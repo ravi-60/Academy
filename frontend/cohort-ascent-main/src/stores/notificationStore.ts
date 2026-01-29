@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Notification } from '@/types/notification';
+import api from '@/api';
 
 interface NotificationState {
     notifications: Notification[];
@@ -28,16 +29,27 @@ export const useNotificationStore = create<NotificationState>()(
                         unreadCount: newNotifications.filter((n) => !n.isRead).length,
                     };
                 }),
-            markAsRead: (id) =>
-                set((state) => {
-                    const newNotifications = state.notifications.map((n) =>
-                        n.id === id ? { ...n, isRead: true } : n
-                    );
-                    return {
-                        notifications: newNotifications,
-                        unreadCount: newNotifications.filter((n) => !n.isRead).length,
-                    };
-                }),
+
+
+            markAsRead: async (id) => {
+                try {
+                    // Optimistic update
+                    set((state) => {
+                        const newNotifications = state.notifications.map((n) =>
+                            n.id === id ? { ...n, isRead: true } : n
+                        );
+                        return {
+                            notifications: newNotifications,
+                            unreadCount: newNotifications.filter((n) => !n.isRead).length,
+                        };
+                    });
+
+                    // Sync with backend
+                    await api.patch(`/notifications/${id}/read`);
+                } catch (error) {
+                    console.error('Failed to mark notification as read:', error);
+                }
+            },
             markAllAsRead: () =>
                 set((state) => {
                     const newNotifications = state.notifications.map((n) => ({ ...n, isRead: true }));

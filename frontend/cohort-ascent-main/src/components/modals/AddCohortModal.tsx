@@ -73,10 +73,22 @@ export const AddCohortModal = ({
   const [customBU, setCustomBU] = useState('');
 
   const handleSubmit = (data: CohortFormData) => {
-    onSubmit({
-      ...data,
+    // Transform data to match backend DTO
+    const payload: any = {
+      code: data.code,
       bu: buValue === 'OTHER' ? customBU : data.bu,
-    });
+      skill: data.skill,
+      trainingLocation: data.location, // Map location -> trainingLocation
+      startDate: data.start_date, // Map start_date -> startDate
+      endDate: data.end_date, // Map end_date -> endDate
+      activeGencCount: 0 // Default value
+    };
+
+    if (data.coachId) {
+      payload.coachId = parseInt(data.coachId, 10);
+    }
+
+    onSubmit(payload);
   };
 
 

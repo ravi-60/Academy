@@ -40,6 +40,9 @@ public class CohortService {
     @Autowired
     private ActivityRepository activityRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public Cohort createCohort(CreateCohortRequest request) {
 
         Cohort cohort = new Cohort();
@@ -48,9 +51,12 @@ public class CohortService {
         cohort.setBu(request.getBu());
         cohort.setSkill(request.getSkill());
         cohort.setTrainingLocation(request.getTrainingLocation());
-        cohort.setStartDate(LocalDate.parse(request.getStartDate()));
+        cohort.setStartDate(
+                request.getStartDate() != null && !request.getStartDate().isEmpty()
+                        ? LocalDate.parse(request.getStartDate())
+                        : null);
         cohort.setEndDate(
-                request.getEndDate() != null
+                request.getEndDate() != null && !request.getEndDate().isEmpty()
                         ? LocalDate.parse(request.getEndDate())
                         : null);
         cohort.setActiveGencCount(
@@ -84,7 +90,27 @@ public class CohortService {
             activity.setCoach(savedCohort.getCoach());
             activity.setCohort(savedCohort);
             activityRepository.save(activity);
+
+            // Send Realtime Notification
+            Notification notification = new Notification(
+                    savedCohort.getCoach().getId(),
+                    "COACH",
+                    "COHORT_ASSIGNMENT",
+                    "New Cohort Assigned",
+                    "You have been assigned to cohort " + savedCohort.getCode(),
+                    "/cohorts/" + savedCohort.getId() // or code if routing uses code
+            );
+            notificationService.createNotification(notification);
         }
+
+        // Notify Admins of New Cohort Creation
+        notificationService.notifyRole(
+                "ADMIN",
+                "COHORT_CREATED",
+                "New Territory Active",
+                "Cohort " + savedCohort.getCode() + " has been initialized in " + savedCohort.getTrainingLocation()
+                        + ".",
+                "/cohorts/" + savedCohort.getId());
 
         return savedCohort;
     }

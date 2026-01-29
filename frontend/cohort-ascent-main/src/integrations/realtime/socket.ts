@@ -12,13 +12,19 @@ export interface EffortActivity {
   type: 'EFFORT_SUBMITTED' | 'WEEKLY_SUMMARY';
 }
 
-export const connectSocket = (onActivityReceived: (activity: EffortActivity) => void) => {
+import { Notification } from '@/types/notification';
+
+export const connectSocket = (
+  userId: string,
+  onActivityReceived: (activity: EffortActivity) => void,
+  onNotificationReceived: (notification: Notification) => void
+) => {
   try {
     const socket = new SockJS('/ws');
     stompClient = new Client({
       webSocketFactory: () => socket,
       debug: (str) => {
-        console.log('WebSocket:', str);
+        // console.log('WebSocket:', str);
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
@@ -28,7 +34,20 @@ export const connectSocket = (onActivityReceived: (activity: EffortActivity) => 
     stompClient.onConnect = (frame) => {
       console.log('Connected to WebSocket:', frame);
 
-      // Subscribe to effort submissions
+      // Subscribe to personal notifications
+      stompClient?.subscribe(`/topic/notifications/${userId}`, (message) => {
+        try {
+          const notification: Notification = JSON.parse(message.body);
+          // Ensure ID types match frontend expectations
+          notification.id = notification.id.toString();
+          notification.recipientId = notification.recipientId.toString();
+          onNotificationReceived(notification);
+        } catch (error) {
+          console.error('Error parsing Notification WebSocket message:', error);
+        }
+      });
+
+      // Subscribe to effort submissions (Legacy/Global)
       stompClient?.subscribe('/topic/efforts', (message) => {
         try {
           const activity: EffortActivity = JSON.parse(message.body);
@@ -38,7 +57,7 @@ export const connectSocket = (onActivityReceived: (activity: EffortActivity) => 
         }
       });
 
-      // Subscribe to weekly summaries
+      // Subscribe to weekly summaries (Legacy/Global)
       stompClient?.subscribe('/topic/weekly-summary', (message) => {
         try {
           const activity: EffortActivity = JSON.parse(message.body);
