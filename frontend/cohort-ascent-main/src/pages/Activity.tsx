@@ -129,7 +129,7 @@ export const Activity = () => {
                         Sync Now
                     </GradientButton>
                     <GradientButton
-                        variant="default"
+                        variant="primary"
                         className="rounded-2xl h-12 shadow-glow-cyan"
                         icon={<Download className="h-4 w-4" />}
                     >
