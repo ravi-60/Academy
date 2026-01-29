@@ -26,6 +26,9 @@ public class Cohort {
     @Column(name = "active_genc_count", nullable = false)
     private Integer activeGencCount;
 
+    @Column(name = "total_genc_count", nullable = false)
+    private Integer totalGencCount = 0;
+
     @Column(name = "training_location", nullable = false)
     private String trainingLocation;
 
@@ -73,6 +76,7 @@ public class Cohort {
         this.bu = bu;
         this.skill = skill;
         this.activeGencCount = activeGencCount;
+        this.totalGencCount = 0;
         this.trainingLocation = trainingLocation;
         this.coach = coach;
         this.startDate = startDate;
@@ -118,6 +122,14 @@ public class Cohort {
 
     public void setActiveGencCount(Integer activeGencCount) {
         this.activeGencCount = activeGencCount;
+    }
+
+    public Integer getTotalGencCount() {
+        return totalGencCount;
+    }
+
+    public void setTotalGencCount(Integer totalGencCount) {
+        this.totalGencCount = totalGencCount;
     }
 
     public String getTrainingLocation() {

@@ -19,8 +19,13 @@ public class CandidateController {
     private CandidateService candidateService;
 
     @GetMapping
-    public ResponseEntity<List<Candidate>> getAllCandidates() {
-        List<Candidate> candidates = candidateService.getAllCandidates();
+    public ResponseEntity<List<Candidate>> getAllCandidates(@RequestParam(required = false) String email) {
+        List<Candidate> candidates;
+        if (email != null && !email.isEmpty()) {
+            candidates = candidateService.getCandidatesForUser(email);
+        } else {
+            candidates = List.of(); // Default to empty if no email provided for safety
+        }
         return ResponseEntity.ok(candidates);
     }
 

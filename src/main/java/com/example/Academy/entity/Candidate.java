@@ -21,12 +21,6 @@ public class Candidate {
     @Column(unique = true)
     private String email;
 
-    @Column(nullable = false)
-    private String skill;
-
-    @Column(nullable = false)
-    private String location;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cohort_id", nullable = false)
     private Cohort cohort;
@@ -37,6 +31,9 @@ public class Candidate {
 
     @Column(name = "join_date")
     private LocalDate joinDate;
+
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -52,13 +49,11 @@ public class Candidate {
     public Candidate() {
     }
 
-    public Candidate(String candidateId, String name, String email, String skill, String location, Cohort cohort,
+    public Candidate(String candidateId, String name, String email, Cohort cohort,
             Status status, LocalDate joinDate) {
         this.candidateId = candidateId;
         this.name = name;
         this.email = email;
-        this.skill = skill;
-        this.location = location;
         this.cohort = cohort;
         this.status = status;
         this.joinDate = joinDate;
@@ -97,22 +92,6 @@ public class Candidate {
         this.email = email;
     }
 
-    public String getSkill() {
-        return skill;
-    }
-
-    public void setSkill(String skill) {
-        this.skill = skill;
-    }
-
-    public String getLocation() {
-        return location;
-    }
-
-    public void setLocation(String location) {
-        this.location = location;
-    }
-
     public Cohort getCohort() {
         return cohort;
     }
@@ -135,6 +114,14 @@ public class Candidate {
 
     public void setJoinDate(LocalDate joinDate) {
         this.joinDate = joinDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -283,6 +283,7 @@ export const DashboardLayout = () => {
               type="text"
               placeholder="Search cohorts, candidates..."
               className="input-premium pl-10 w-80"
+              autoComplete="off"
             />
           </div>
           <div className="flex items-center gap-4">

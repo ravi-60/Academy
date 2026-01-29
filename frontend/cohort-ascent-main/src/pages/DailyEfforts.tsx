@@ -419,10 +419,6 @@ export const DailyEfforts = () => {
                         <MapPin className="h-3.5 w-3.5 text-primary/60" />
                         {cohort.trainingLocation}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground/80">
-                        <Users className="h-3.5 w-3.5 text-primary/60" />
-                        {(cohort as any).primaryTrainer?.name || (cohort as any).trainerName || "No Trainer"}
-                      </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">

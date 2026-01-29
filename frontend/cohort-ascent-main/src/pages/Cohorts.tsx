@@ -53,7 +53,7 @@ export const Cohorts = () => {
       startDate: c.startDate,
       endDate: c.endDate,
       status: 'active' as 'active' | 'upcoming' | 'completed', // Default to active
-      candidateCount: c.activeGencCount,
+      candidateCount: c.totalGencCount ?? c.activeGencCount,
       progress: c.progress || 0, // Backend doesn't have progress field
       coachId: c.coach?.id?.toString() || '',
       coachName: c.coach?.name || 'Unassigned',
@@ -92,11 +92,11 @@ export const Cohorts = () => {
       bu: data.bu,
       skill: data.skill,
       activeGencCount: 0,
-      trainingLocation: data.location,
-      startDate: data.start_date,
-      endDate: data.end_date || null,
-      coachId: data.coachId ? Number(data.coachId) : null,
-      primaryTrainerId: null, // or another dropdown later
+      trainingLocation: data.trainingLocation,
+      startDate: data.startDate,
+      endDate: data.endDate || null,
+      coachId: data.coachId,
+      primaryTrainerId: null,
     }, {
       onSuccess: () => {
         setShowAddCohort(false);

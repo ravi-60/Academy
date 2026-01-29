@@ -18,12 +18,30 @@ public class CandidateService {
     @Autowired
     private com.example.Academy.repository.CohortRepository cohortRepository;
 
+    @Autowired
+    private com.example.Academy.repository.UserRepository userRepository;
+
     public List<Candidate> getAllCandidates() {
         return candidateRepository.findAll();
     }
 
+    public List<Candidate> getCandidatesForUser(String email) {
+        if (email == null || email.isEmpty()) {
+            return List.of();
+        }
+
+        com.example.Academy.entity.User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == com.example.Academy.entity.User.Role.ADMIN) {
+            return candidateRepository.findAllActive();
+        } else {
+            return candidateRepository.findActiveByCoachEmail(email);
+        }
+    }
+
     public List<Candidate> getCandidatesByCohortId(Long cohortId) {
-        return candidateRepository.findByCohortId(cohortId);
+        return candidateRepository.findByCohortIdAndStatus(cohortId, Candidate.Status.ACTIVE);
     }
 
     public Optional<Candidate> getCandidateById(Long id) {
@@ -42,38 +60,74 @@ public class CandidateService {
 
         Candidate savedCandidate = candidateRepository.save(candidate);
 
-        if (savedCandidate.getCohort() != null && savedCandidate.getStatus() == Candidate.Status.ACTIVE) {
+        if (savedCandidate.getCohort() != null) {
             com.example.Academy.entity.Cohort cohort = savedCandidate.getCohort();
-            cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
-            cohortRepository.save(cohort);
+            boolean changed = false;
+
+            if (savedCandidate.getStatus() == Candidate.Status.ACTIVE) {
+                cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
+                changed = true;
+            }
+            if (savedCandidate.getStatus() == Candidate.Status.ACTIVE
+                    || savedCandidate.getStatus() == Candidate.Status.COMPLETED) {
+                cohort.setTotalGencCount(cohort.getTotalGencCount() + 1);
+                changed = true;
+            }
+
+            if (changed) {
+                cohortRepository.save(cohort);
+            }
         }
 
         return savedCandidate;
     }
 
     public List<Candidate> createCandidates(List<Candidate> candidates) {
-        for (Candidate candidate : candidates) {
-            if (candidateRepository.existsByCandidateId(candidate.getCandidateId())) {
-                throw new RuntimeException("Candidate ID already exists: " + candidate.getCandidateId());
-            }
-            if (candidate.getEmail() != null && candidateRepository.existsByEmail(candidate.getEmail())) {
-                throw new RuntimeException("Email already exists: " + candidate.getEmail());
-            }
-            candidate.setCreatedAt(LocalDateTime.now());
-            candidate.setUpdatedAt(LocalDateTime.now());
-        }
-        List<Candidate> savedCandidates = candidateRepository.saveAll(candidates);
+        List<Candidate> newCandidates = new java.util.ArrayList<>();
 
-        // Group by cohort and update counts (simplified approach: iterate and update)
-        // For better performance in large batches, we should group by cohort ID first.
-        // given the valid use cases are small, iterating is acceptable.
+        for (Candidate candidate : candidates) {
+            boolean exists = false;
+
+            if (candidateRepository.existsByCandidateId(candidate.getCandidateId())) {
+                System.out.println("Skipping duplicate candidate ID: " + candidate.getCandidateId());
+                exists = true;
+            }
+            if (!exists && candidate.getEmail() != null && candidateRepository.existsByEmail(candidate.getEmail())) {
+                System.out.println("Skipping duplicate candidate Email: " + candidate.getEmail());
+                exists = true;
+            }
+
+            if (!exists) {
+                candidate.setCreatedAt(LocalDateTime.now());
+                candidate.setUpdatedAt(LocalDateTime.now());
+                newCandidates.add(candidate);
+            }
+        }
+
+        if (newCandidates.isEmpty()) {
+            return newCandidates;
+        }
+
+        List<Candidate> savedCandidates = candidateRepository.saveAll(newCandidates);
+
+        // Group by cohort and update counts
         for (Candidate c : savedCandidates) {
-            if (c.getCohort() != null && c.getStatus() == Candidate.Status.ACTIVE) {
+            if (c.getCohort() != null) {
                 com.example.Academy.entity.Cohort cohort = cohortRepository.findById(c.getCohort().getId())
                         .orElse(null);
                 if (cohort != null) {
-                    cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
-                    cohortRepository.save(cohort);
+                    boolean changed = false;
+                    if (c.getStatus() == Candidate.Status.ACTIVE) {
+                        cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
+                        changed = true;
+                    }
+                    if (c.getStatus() == Candidate.Status.ACTIVE || c.getStatus() == Candidate.Status.COMPLETED) {
+                        cohort.setTotalGencCount(cohort.getTotalGencCount() + 1);
+                        changed = true;
+                    }
+                    if (changed) {
+                        cohortRepository.save(cohort);
+                    }
                 }
             }
         }
@@ -89,8 +143,6 @@ public class CandidateService {
 
             candidate.setName(candidateDetails.getName());
             candidate.setEmail(candidateDetails.getEmail());
-            candidate.setSkill(candidateDetails.getSkill());
-            candidate.setLocation(candidateDetails.getLocation());
 
             // Only update cohort if provided, otherwise keep existing
             if (candidateDetails.getCohort() != null) {
@@ -111,31 +163,48 @@ public class CandidateService {
 
             candidate.setStatus(candidateDetails.getStatus());
             candidate.setJoinDate(candidateDetails.getJoinDate());
+            candidate.setEndDate(candidateDetails.getEndDate());
             candidate.setUpdatedAt(LocalDateTime.now());
 
-            // Update counts if status changed
+            Candidate savedCandidate = candidateRepository.save(candidate);
+
+            // Update cohort counts if status changed
             if (oldStatus != candidateDetails.getStatus()) {
-                com.example.Academy.entity.Cohort cohort = candidate.getCohort();
+                com.example.Academy.entity.Cohort cohort = savedCandidate.getCohort();
                 if (cohort != null) {
+                    boolean changed = false;
+                    // Active Count
                     if (candidateDetails.getStatus() == Candidate.Status.ACTIVE) {
                         cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
+                        changed = true;
                     } else if (oldStatus == Candidate.Status.ACTIVE) {
                         cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
+                        changed = true;
                     }
-                    cohortRepository.save(cohort);
+
+                    // Total Count (Active/Completed)
+                    boolean oldWasTotal = (oldStatus == Candidate.Status.ACTIVE
+                            || oldStatus == Candidate.Status.COMPLETED);
+                    boolean newIsTotal = (candidateDetails.getStatus() == Candidate.Status.ACTIVE
+                            || candidateDetails.getStatus() == Candidate.Status.COMPLETED);
+
+                    if (oldWasTotal != newIsTotal) {
+                        if (newIsTotal) {
+                            cohort.setTotalGencCount(cohort.getTotalGencCount() + 1);
+                            changed = true;
+                        } else {
+                            cohort.setTotalGencCount(Math.max(0, cohort.getTotalGencCount() - 1));
+                            changed = true;
+                        }
+                    }
+
+                    if (changed) {
+                        cohortRepository.save(cohort);
+                    }
                 }
-            } else if (candidateDetails.getCohort() != null
-                    && !candidateDetails.getCohort().getId().equals(optionalCandidate.get().getCohort().getId())
-                    && candidateDetails.getStatus() == Candidate.Status.ACTIVE) {
-                // Status didn't change (Active -> Active) but Cohort changed
-                com.example.Academy.entity.Cohort newCohort = candidateDetails.getCohort();
-                // Reload to be sure
-                newCohort = cohortRepository.findById(newCohort.getId()).orElse(newCohort);
-                newCohort.setActiveGencCount(newCohort.getActiveGencCount() + 1);
-                cohortRepository.save(newCohort);
             }
 
-            return candidateRepository.save(candidate);
+            return savedCandidate;
         }
         return null;
     }
@@ -144,12 +213,24 @@ public class CandidateService {
         Optional<Candidate> candidate = candidateRepository.findById(id);
         if (candidate.isPresent()) {
             Candidate c = candidate.get();
-            if (c.getCohort() != null && c.getStatus() == Candidate.Status.ACTIVE) {
+            if (c.getCohort() != null) {
                 com.example.Academy.entity.Cohort cohort = c.getCohort();
-                cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
-                cohortRepository.save(cohort);
+                boolean changed = false;
+                if (c.getStatus() == Candidate.Status.ACTIVE) {
+                    cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
+                    changed = true;
+                }
+                if (c.getStatus() == Candidate.Status.ACTIVE || c.getStatus() == Candidate.Status.COMPLETED) {
+                    cohort.setTotalGencCount(Math.max(0, cohort.getTotalGencCount() - 1));
+                    changed = true;
+                }
+                if (changed)
+                    cohortRepository.save(cohort);
             }
-            candidateRepository.deleteById(id);
+            // Soft delete: set status to INACTIVE instead of deleting
+            c.setStatus(Candidate.Status.INACTIVE);
+            c.setUpdatedAt(LocalDateTime.now());
+            candidateRepository.save(c);
         }
     }
 }

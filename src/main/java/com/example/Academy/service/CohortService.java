@@ -47,6 +47,9 @@ public class CohortService {
 
         Cohort cohort = new Cohort();
 
+        if (cohortRepository.existsByCode(request.getCode())) {
+            throw new RuntimeException("Cohort with code " + request.getCode() + " already exists");
+        }
         cohort.setCode(request.getCode());
         cohort.setBu(request.getBu());
         cohort.setSkill(request.getSkill());
@@ -92,31 +95,43 @@ public class CohortService {
             activityRepository.save(activity);
 
             // Send Realtime Notification
-            Notification notification = new Notification(
-                    savedCohort.getCoach().getId(),
-                    "COACH",
-                    "COHORT_ASSIGNMENT",
-                    "New Cohort Assigned",
-                    "You have been assigned to cohort " + savedCohort.getCode(),
-                    "/cohorts/" + savedCohort.getId() // or code if routing uses code
-            );
-            notificationService.createNotification(notification);
+            try {
+                Notification notification = new Notification(
+                        savedCohort.getCoach().getId(),
+                        "COACH",
+                        "COHORT_ASSIGNMENT",
+                        "New Cohort Assigned",
+                        "You have been assigned to cohort " + savedCohort.getCode(),
+                        "/cohorts/" + savedCohort.getId() // or code if routing uses code
+                );
+                notificationService.createNotification(notification);
+            } catch (Exception e) {
+                System.err.println("Failed to send coach assignment notification: " + e.getMessage());
+            }
         }
-
-        // Notify Admins of New Cohort Creation
-        notificationService.notifyRole(
-                "ADMIN",
-                "COHORT_CREATED",
-                "New Territory Active",
-                "Cohort " + savedCohort.getCode() + " has been initialized in " + savedCohort.getTrainingLocation()
-                        + ".",
-                "/cohorts/" + savedCohort.getId());
 
         return savedCohort;
     }
 
     public List<Cohort> getAllCohorts() {
         return cohortRepository.findAll();
+    }
+
+    public List<Cohort> getCohortsForUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        System.out.println("DEBUG: User found: " + user.getEmail() + ", Role: " + user.getRole());
+
+        if (user.getRole() == User.Role.ADMIN) {
+            System.out.println("DEBUG: User is ADMIN. Returning all cohorts.");
+            return cohortRepository.findAll();
+        } else {
+            List<Cohort> assigned = cohortRepository.findByCoach(user);
+            System.out
+                    .println("DEBUG: User is " + user.getRole() + ". Found " + assigned.size() + " assigned cohorts.");
+            return assigned;
+        }
     }
 
     public Optional<Cohort> getCohortById(Long id) {
@@ -154,6 +169,7 @@ public class CohortService {
         dto.setBu(c.getBu());
         dto.setSkill(c.getSkill());
         dto.setActiveGencCount(c.getActiveGencCount());
+        dto.setTotalGencCount(c.getTotalGencCount());
         dto.setTrainingLocation(c.getTrainingLocation());
         dto.setStartDate(c.getStartDate());
         dto.setEndDate(c.getEndDate());
@@ -262,5 +278,38 @@ public class CohortService {
 
     public List<CohortMentorMapping> getAdditionalMentors(Long cohortId) {
         return cohortMentorMappingRepository.findByCohortId(cohortId);
+    }
+
+    @Autowired
+    private CandidateRepository candidateRepository;
+
+    // Fix for data synchronization
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void recalculateAcceptedCounts() {
+        System.out.println("DEBUG: Recalculating candidate counts...");
+        List<Cohort> cohorts = cohortRepository.findAll();
+        for (Cohort cohort : cohorts) {
+            long activeCount = candidateRepository.countByCohortIdAndStatus(cohort.getId(), Candidate.Status.ACTIVE);
+            long totalCount = candidateRepository.countByCohortIdAndStatusIn(cohort.getId(),
+                    java.util.Arrays.asList(Candidate.Status.ACTIVE, Candidate.Status.COMPLETED));
+
+            boolean changed = false;
+            if (cohort.getActiveGencCount() != activeCount) {
+                System.out.println("Correcting active count for " + cohort.getCode() + ": "
+                        + cohort.getActiveGencCount() + " -> " + activeCount);
+                cohort.setActiveGencCount((int) activeCount);
+                changed = true;
+            }
+            if (cohort.getTotalGencCount() == null || cohort.getTotalGencCount() != totalCount) {
+                System.out.println("Correcting total count for " + cohort.getCode() + ": " + cohort.getTotalGencCount()
+                        + " -> " + totalCount);
+                cohort.setTotalGencCount((int) totalCount);
+                changed = true;
+            }
+
+            if (changed) {
+                cohortRepository.save(cohort);
+            }
+        }
     }
 }

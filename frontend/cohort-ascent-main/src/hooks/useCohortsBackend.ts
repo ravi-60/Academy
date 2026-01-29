@@ -3,13 +3,20 @@ import { cohortApi, Cohort } from '@/integrations/backend/cohortApi';
 import { toast } from 'sonner';
 import { CreateCohortRequest } from '@/integrations/backend/cohortApi';
 
+import { useAuthStore } from '@/stores/authStore';
+
 export const useCohorts = () => {
+  const user = useAuthStore((state) => state.user);
+  console.log('DEBUG: useCohorts hook - Current User:', user);
+
   return useQuery({
-    queryKey: ['cohorts'],
+    queryKey: ['cohorts', user?.email],
     queryFn: async () => {
-      const response = await cohortApi.getAllCohorts();
+      console.log('DEBUG: Fetching cohorts for email:', user?.email);
+      const response = await cohortApi.getAllCohorts(user?.email);
       return response.data as Cohort[];
     },
+    enabled: !!user?.email,
   });
 };
 

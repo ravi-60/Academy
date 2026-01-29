@@ -36,32 +36,32 @@ public class UserService {
 
     public User createUserFromDto(CreateUserRequest request) {
 
-    if (userRepository.existsByEmpId(request.getEmpId())) {
-        throw new RuntimeException("Employee ID already exists");
+        if (userRepository.existsByEmpId(request.getEmpId())) {
+            throw new RuntimeException("Employee ID already exists");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = new User();
+        user.setEmpId(request.getEmpId());
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        user.setRole(User.Role.valueOf(request.getRole()));
+        user.setEmployeeType(User.EmployeeType.valueOf(request.getEmployeeType()));
+
+        user.setSkill(request.getSkill());
+        user.setLocation(request.getLocation());
+
+        user.setStatus(User.Status.ACTIVE);
+        user.setAssignedCohorts(0);
+        user.setCreatedAt(java.time.LocalDateTime.now());
+
+        return userRepository.save(user);
     }
-
-    if (userRepository.existsByEmail(request.getEmail())) {
-        throw new RuntimeException("Email already exists");
-    }
-
-    User user = new User();
-    user.setEmpId(request.getEmpId());
-    user.setName(request.getName());
-    user.setEmail(request.getEmail());
-    user.setPassword(passwordEncoder.encode(request.getPassword()));
-
-    user.setRole(User.Role.valueOf(request.getRole()));
-    user.setEmployeeType(User.EmployeeType.valueOf(request.getEmployeeType()));
-
-    user.setSkill(request.getSkill());
-    user.setLocation(request.getLocation());
-
-    user.setStatus(User.Status.ACTIVE);
-    user.setAssignedCohorts(0);
-    user.setCreatedAt(java.time.LocalDateTime.now());
-
-    return userRepository.save(user);
-}
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -85,16 +85,16 @@ public class UserService {
 
         // Check for duplicate empId
         if (!user.getEmpId().equals(userDetails.getEmpId()) &&
-            userRepository.existsByEmpId(userDetails.getEmpId())) {
+                userRepository.existsByEmpId(userDetails.getEmpId())) {
             throw new RuntimeException("Employee ID already exists");
         }
 
         // Check for duplicate email
         if (!user.getEmail().equals(userDetails.getEmail()) &&
-            userRepository.existsByEmail(userDetails.getEmail())) {
+                userRepository.existsByEmail(userDetails.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-        
+
         if (userDetails.getPassword() != null && !userDetails.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(userDetails.getPassword()));
         }
@@ -127,30 +127,52 @@ public class UserService {
     }
 
     public User updateUserFromDto(Long id, UpdateUserRequest request) {
-    User user = userRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    if (!user.getEmpId().equals(request.getEmpId()) &&
-        userRepository.existsByEmpId(request.getEmpId())) {
-        throw new RuntimeException("Employee ID already exists");
+        if (!user.getEmpId().equals(request.getEmpId()) &&
+                userRepository.existsByEmpId(request.getEmpId())) {
+            throw new RuntimeException("Employee ID already exists");
+        }
+
+        if (!user.getEmail().equals(request.getEmail()) &&
+                userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        user.setEmpId(request.getEmpId());
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setEmployeeType(User.EmployeeType.valueOf(request.getEmployeeType()));
+        user.setLocation(request.getLocation());
+
+        return userRepository.save(user);
     }
-
-    if (!user.getEmail().equals(request.getEmail()) &&
-        userRepository.existsByEmail(request.getEmail())) {
-        throw new RuntimeException("Email already exists");
-    }
-
-    user.setEmpId(request.getEmpId());
-    user.setName(request.getName());
-    user.setEmail(request.getEmail());
-    user.setEmployeeType(User.EmployeeType.valueOf(request.getEmployeeType()));
-    user.setLocation(request.getLocation());
-
-    return userRepository.save(user);
-}
 
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    public User updateProfile(Long userId, String name, String location) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setName(name);
+        user.setLocation(location);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
+    public void updatePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new RuntimeException("Incorrect current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
     }
 
     public boolean authenticateUser(String empId, String password) {
@@ -166,12 +188,11 @@ public class UserService {
                 .filter(user -> user.getRole() == role)
                 .toList();
     }
-    public List<User> findByRoleAndStatus(String role, String status) {
-    return userRepository.findByRoleAndStatus(
-        User.Role.valueOf(role),
-        User.Status.valueOf(status)
-    );
-}
 
+    public List<User> findByRoleAndStatus(String role, String status) {
+        return userRepository.findByRoleAndStatus(
+                User.Role.valueOf(role),
+                User.Status.valueOf(status));
+    }
 
 }

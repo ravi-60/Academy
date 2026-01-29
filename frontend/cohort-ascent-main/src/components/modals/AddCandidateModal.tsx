@@ -20,13 +20,13 @@ import { Input } from '@/components/ui/input';
 import { GradientButton } from '@/components/ui/GradientButton';
 
 const candidateSchema = z.object({
-  candidate_id: z.string().min(1, 'Candidate ID is required'),
+  associate_id: z.string().min(1, 'Associate Id is required'),
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
-  skill: z.string().min(1, 'Skill is required'),
-  location: z.string().min(1, 'Location is required'),
-  status: z.enum(['active', 'inactive', 'completed']),
+  cohort_code: z.string(),
+  cognizant_email_id: z.string().email('Invalid email').optional().or(z.literal('')),
   join_date: z.string().optional(),
+  end_date: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'completed']),
 });
 
 type CandidateFormData = z.infer<typeof candidateSchema>;
@@ -53,26 +53,26 @@ export const AddCandidateModal = ({
   const form = useForm<CandidateFormData>({
     resolver: zodResolver(candidateSchema),
     defaultValues: {
-      candidate_id: initialData?.candidate_id || '',
+      associate_id: initialData?.associate_id || '',
       name: initialData?.name || '',
-      email: initialData?.email || '',
-      skill: initialData?.skill || '',
-      location: initialData?.location || '',
+      cohort_code: initialData?.cohort_code || '',
+      cognizant_email_id: initialData?.cognizant_email_id || '',
+      join_date: initialData?.join_date || '',
+      end_date: initialData?.end_date || '',
       status: initialData?.status || 'active',
-      join_date: initialData?.join_date || new Date().toISOString().split('T')[0],
     },
   });
 
   useEffect(() => {
     if (isOpen) {
       form.reset({
-        candidate_id: initialData?.candidate_id || '',
+        associate_id: initialData?.associate_id || '',
         name: initialData?.name || '',
-        email: initialData?.email || '',
-        skill: initialData?.skill || '',
-        location: initialData?.location || '',
+        cohort_code: initialData?.cohort_code || '',
+        cognizant_email_id: initialData?.cognizant_email_id || '',
+        join_date: initialData?.join_date || '',
+        end_date: initialData?.end_date || '',
         status: initialData?.status || 'active',
-        join_date: initialData?.join_date || new Date().toISOString().split('T')[0],
       });
     }
   }, [isOpen, initialData, form]);
@@ -88,7 +88,7 @@ export const AddCandidateModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg border-border/50 bg-background/95 backdrop-blur-xl">
+      <DialogContent className="max-w-md border-border/50 bg-background/95 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             {mode === 'add' ? 'Add Candidate' : 'Edit Candidate'}
@@ -100,12 +100,12 @@ export const AddCandidateModal = ({
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="candidate_id"
+                name="associate_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Candidate ID</FormLabel>
+                    <FormLabel>Associate ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="GC-2024-001" className="input-premium" {...field} />
+                      <Input placeholder="Associate ID" className="input-premium" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -117,9 +117,9 @@ export const AddCandidateModal = ({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" className="input-premium" {...field} />
+                      <Input placeholder="Name" className="input-premium" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -128,12 +128,12 @@ export const AddCandidateModal = ({
 
               <FormField
                 control={form.control}
-                name="email"
+                name="cohort_code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email (Optional)</FormLabel>
+                    <FormLabel>Cohort Code</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@company.com" className="input-premium" {...field} />
+                      <Input disabled className="input-premium bg-muted/50" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -142,44 +142,12 @@ export const AddCandidateModal = ({
 
               <FormField
                 control={form.control}
-                name="skill"
+                name="cognizant_email_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Skill / Technology</FormLabel>
+                    <FormLabel>Cognizant Email ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="React, Node.js" className="input-premium" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Bangalore" className="input-premium" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <FormControl>
-                      <select {...field} className="input-premium w-full">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="completed">Completed</option>
-                      </select>
+                      <Input type="email" placeholder="email@cognizant.com" className="input-premium" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -194,6 +162,38 @@ export const AddCandidateModal = ({
                     <FormLabel>Join Date</FormLabel>
                     <FormControl>
                       <Input type="date" className="input-premium" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" className="input-premium" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <FormControl>
+                      <select {...field} className="input-premium w-full bg-background">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="completed">Completed</option>
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

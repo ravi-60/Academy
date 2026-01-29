@@ -10,7 +10,9 @@ export interface AuthResponse {
   userId: number;
   empId: string;
   name: string;
+  email: string;
   role: string;
+  token?: string; // It was in backend, might as well add it
 }
 
 export const authApi = {

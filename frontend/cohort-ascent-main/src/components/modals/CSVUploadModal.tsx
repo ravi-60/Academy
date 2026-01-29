@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, X, FileSpreadsheet, AlertCircle, Check } from 'lucide-react';
 import {
@@ -15,6 +15,7 @@ interface CSVUploadModalProps {
   onUpload: (data: Record<string, string>[]) => void;
   title: string;
   requiredColumns: string[];
+  initialFile?: File | null;
 }
 
 export const CSVUploadModal = ({
@@ -23,6 +24,7 @@ export const CSVUploadModal = ({
   onUpload,
   title,
   requiredColumns,
+  initialFile,
 }: CSVUploadModalProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -30,6 +32,12 @@ export const CSVUploadModal = ({
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (initialFile && isOpen) {
+      handleFile(initialFile);
+    }
+  }, [initialFile, isOpen]);
 
   const parseCSV = (text: string): Record<string, string>[] => {
     const lines = text.split('\n').filter(line => line.trim());
@@ -112,9 +120,8 @@ export const CSVUploadModal = ({
           {!file ? (
             <>
               <div
-                className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-all ${
-                  isDragOver ? 'border-primary bg-primary/5' : 'border-border/50'
-                }`}
+                className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-all ${isDragOver ? 'border-primary bg-primary/5' : 'border-border/50'
+                  }`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   setIsDragOver(true);

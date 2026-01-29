@@ -23,17 +23,26 @@ public class NotificationService {
         return notificationRepository.findByRecipientIdOrRole(userId, role);
     }
 
+    @Autowired
     private com.example.Academy.repository.UserRepository userRepository;
 
     // ... existing methods ...
 
     public void notifyRole(String targetRole, String type, String title, String message, String link) {
+        notifyRole(targetRole, type, title, message, link, null);
+    }
+
+    public void notifyRole(String targetRole, String type, String title, String message, String link,
+            Long excludeUserId) {
         try {
             com.example.Academy.entity.User.Role roleEnum = com.example.Academy.entity.User.Role.valueOf(targetRole);
             List<com.example.Academy.entity.User> users = userRepository.findByRoleAndStatus(roleEnum,
                     com.example.Academy.entity.User.Status.ACTIVE);
 
             for (com.example.Academy.entity.User user : users) {
+                if (excludeUserId != null && user.getId().equals(excludeUserId)) {
+                    continue; // Skip the sender
+                }
                 Notification n = new Notification(
                         user.getId(),
                         targetRole,
@@ -60,9 +69,6 @@ public class NotificationService {
     }
 
     public void markAsRead(Long id) {
-        notificationRepository.findById(id).ifPresent(notification -> {
-            notification.setRead(true);
-            notificationRepository.save(notification);
-        });
+        notificationRepository.deleteById(id);
     }
 }

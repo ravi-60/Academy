@@ -13,6 +13,7 @@ export interface Cohort {
   bu: string;
   skill: string;
   activeGencCount: number;
+  totalGencCount: number;
   trainingLocation: string;
   startDate: string;
   endDate: string;
@@ -49,7 +50,7 @@ export interface CreateCohortRequest {
 
 
 export const cohortApi = {
-  getAllCohorts: () => api.get('/cohorts'),
+  getAllCohorts: (email?: string) => api.get('/cohorts', { params: { email } }),
   getCohortById: (id: number) => api.get(`/cohorts/${id}`),
   createCohort: (cohort: CreateCohortRequest) => api.post('/cohorts', cohort),
   updateCohort: (id: number, cohort: Partial<Cohort>) => api.put(`/cohorts/${id}`, cohort),

@@ -22,8 +22,6 @@ export interface Mentor {
 export interface Candidate {
   id: string;
   name: string;
-  skill: string;
-  location: string;
   status: 'active' | 'inactive' | 'completed';
   joinDate: string;
 }
@@ -39,7 +37,7 @@ export interface Cohort {
   coachName: string;
   trainers: Trainer[];
   mentors: Mentor[];
-   primaryTrainer?: {
+  primaryTrainer?: {
     id: number;
     name: string;
     email?: string;

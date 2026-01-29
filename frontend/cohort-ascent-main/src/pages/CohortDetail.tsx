@@ -108,7 +108,7 @@ export const CohortDetail = () => {
                   <span>•</span>
                   <span>{cohort.skill}</span>
                   <span>•</span>
-                  <span>{candidates.length} candidates</span>
+                  <span>{candidates.filter((c: any) => c.status === 'ACTIVE' || c.status === 'COMPLETED').length} candidates</span>
                 </div>
               </div>
             </div>
@@ -274,7 +274,7 @@ const OverviewTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Total Candidates</span>
-            <span className="font-semibold text-foreground">{candidates.length}</span>
+            <span className="font-semibold text-foreground">{candidates.filter((c: any) => c.status === 'ACTIVE' || c.status === 'COMPLETED').length}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Trainers</span>
@@ -621,14 +621,13 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
 
   const handleAddCandidate = (data: any) => {
     createCandidate.mutate({
-      candidateId: data.candidate_id || `GC-${Date.now()}`,
+      candidateId: data.associate_id,
       name: data.name,
-      email: data.email || null,
-      skill: data.skill || cohort.skill,
-      location: data.location || cohort.trainingLocation,
+      email: data.cognizant_email_id || null,
       cohort: cohort,
-      status: 'ACTIVE',
-      joinDate: data.join_date || new Date().toISOString(),
+      status: data.status.toUpperCase() as any,
+      joinDate: data.join_date || cohort.startDate,
+      endDate: data.end_date || cohort.endDate,
     }, {
       onSuccess: () => setShowAddCandidate(false),
     });
@@ -639,13 +638,13 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
 
     updateCandidate.mutate({
       id: selectedCandidate.id,
-      candidateId: data.candidate_id,
+      candidateId: data.associate_id,
       name: data.name,
-      email: data.email || null,
-      skill: data.skill,
-      location: data.location,
+      email: data.cognizant_email_id || null,
+      cohort: cohort,
       status: data.status.toUpperCase() as any,
-      joinDate: data.join_date,
+      joinDate: data.join_date || selectedCandidate.joinDate,
+      endDate: data.end_date || selectedCandidate.endDate,
     }, {
       onSuccess: () => {
         setShowEditCandidate(false);
@@ -655,33 +654,49 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
   };
 
   const handleCSVUpload = (data: Record<string, string>[]) => {
+    // Expected headers: Associate Id, Name, Cohort code, Cognizant Email ID
+    // Filter by current cohort code
+    const validData = data.filter(row => {
+      // Handle various possible header names (case insensitive, spaces -> underscores)
+      const rowCohortCode = row.cohort_code || row.cohortcode;
+      if (!rowCohortCode) return false;
+      return rowCohortCode.trim().toLowerCase() === cohort.code.toLowerCase();
+    });
+
+    if (validData.length === 0) {
+      toast.error(`No candidates found for cohort ${cohort.code} in the uploaded file.`);
+      return;
+    }
+
     const timestamp = Date.now();
-    const candidates = data.map((row, index) => ({
-      candidateId: row.candidate_id || row.id || `GC-${timestamp}-${index}`,
+    const candidates = validData.map((row, index) => ({
+      candidateId: row.associate_id || row.associateid || `GC-${timestamp}-${index}`,
       name: row.name,
-      email: row.email || null,
-      skill: row.skill || cohort.skill,
-      location: row.location || cohort.trainingLocation,
+      email: row.cognizant_email_id || row.cognizantemailid || null, // Map from new header
       cohort: cohort,
       status: 'ACTIVE' as const,
-      joinDate: row.join_date || new Date().toISOString(),
+      joinDate: cohort.startDate, // Auto-fill from Cohort
+      endDate: cohort.endDate // Auto-fill from Cohort
     }));
+
     bulkCreate.mutate(candidates, {
-      onSuccess: () => setShowCSVUpload(false),
+      onSuccess: () => {
+        setShowCSVUpload(false);
+        toast.success(`Imported ${candidates.length} candidates for ${cohort.code}`);
+      },
     });
   };
 
   const handleExport = () => {
     const csvContent = [
-      ['Candidate ID', 'Name', 'Email', 'Skill', 'Location', 'Status', 'Join Date'],
+      ['Candidate ID', 'Name', 'Email', 'Status', 'Join Date', 'End Date'],
       ...candidates.map((c) => [
         c.candidateId,
         c.name,
         c.email || '',
-        c.skill,
-        c.location,
         c.status,
         c.joinDate,
+        c.endDate || ''
       ]),
     ]
       .map((row) => row.join(','))
@@ -719,14 +734,13 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
           >
             Export
           </GradientButton>
-          <GradientButton
-            variant="outline"
-            size="sm"
-            icon={<Upload className="h-4 w-4" />}
-            onClick={() => setShowCSVUpload(true)}
-          >
-            Upload CSV
-          </GradientButton>
+          <CSVUploadModal
+            isOpen={showCSVUpload}
+            onClose={() => setShowCSVUpload(false)}
+            onUpload={handleCSVUpload}
+            title="Import Candidates"
+            requiredColumns={['Associate Id', 'Name', 'Cohort code', 'Cognizant Email ID']}
+          />
           <GradientButton
             variant="primary"
             size="sm"
@@ -751,10 +765,9 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
                 <tr>
                   <th>Candidate ID</th>
                   <th>Name</th>
-                  <th>Skill</th>
-                  <th>Location</th>
                   <th>Status</th>
                   <th>Join Date</th>
+                  <th>End Date</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
@@ -773,8 +786,6 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
                         </div>
                       </div>
                     </td>
-                    <td>{candidate.skill}</td>
-                    <td>{candidate.location}</td>
                     <td>
                       <span className={`badge-status ${statusConfig[candidate.status]?.class || 'bg-muted'}`}>
                         {statusConfig[candidate.status]?.label || candidate.status}
@@ -786,6 +797,13 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
                         day: 'numeric',
                         year: 'numeric',
                       })}
+                    </td>
+                    <td className="text-muted-foreground">
+                      {candidate.endDate ? new Date(candidate.endDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }) : '-'}
                     </td>
                     <td>
                       <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -846,6 +864,12 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
         onClose={() => setShowAddCandidate(false)}
         onSubmit={handleAddCandidate}
         cohortId={cohortId}
+        initialData={{
+          cohort_code: cohort.code,
+          join_date: cohort.startDate ? new Date(cohort.startDate).toISOString().split('T')[0] : '',
+          end_date: cohort.endDate ? new Date(cohort.endDate).toISOString().split('T')[0] : '',
+          status: 'active'
+        }}
         isLoading={createCandidate.isPending}
       />
 
@@ -859,22 +883,15 @@ const CandidatesTab = ({ cohortId, cohort }: CandidatesTabProps) => {
         cohortId={cohortId}
         isLoading={updateCandidate.isPending}
         initialData={selectedCandidate ? {
-          candidate_id: selectedCandidate.candidateId,
+          associate_id: selectedCandidate.candidateId,
           name: selectedCandidate.name,
-          email: selectedCandidate.email || '',
-          skill: selectedCandidate.skill,
-          location: selectedCandidate.location,
-          status: selectedCandidate.status.toLowerCase() as any,
+          cognizant_email_id: selectedCandidate.email || '',
+          cohort_code: cohort.code,
           join_date: selectedCandidate.joinDate ? new Date(selectedCandidate.joinDate).toISOString().split('T')[0] : '',
-        } : undefined}
+          end_date: selectedCandidate.endDate ? new Date(selectedCandidate.endDate).toISOString().split('T')[0] : '',
+          status: selectedCandidate.status.toLowerCase() as any
+        } : { cohort_code: cohort.code, status: 'active' }}
         mode="edit"
-      />
-      <CSVUploadModal
-        isOpen={showCSVUpload}
-        onClose={() => setShowCSVUpload(false)}
-        onUpload={handleCSVUpload}
-        title="Import Candidates"
-        requiredColumns={['candidate_id', 'name', 'email']}
       />
     </div>
   );
@@ -890,7 +907,7 @@ const EffortsTab = ({ cohortId }: EffortsTabProps) => {
   const { data: efforts = [], isLoading } = useEffortsByCohort(idNum);
   const { data: mappingTrainers = [] } = useAdditionalTrainers(idNum);
   const { data: mappingMentors = [] } = useAdditionalMentors(idNum);
-  const { data: cohort } = useCohort(cohortId);
+  const { data: cohort } = useCohort(idNum);
 
   const getStakeholderName = (effort: any) => {
     if (effort.trainerMentor?.name) return effort.trainerMentor.name;

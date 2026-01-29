@@ -1,23 +1,23 @@
 import { motion } from 'framer-motion';
 import {
-  Settings as SettingsIcon,
-  User,
+  User as UserIcon,
   Bell,
   Shield,
   Database,
-  Palette,
-  Mail,
   Save,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import api from '@/api';
+import { toast } from 'sonner';
 
 type SettingsTab = 'profile' | 'notifications' | 'security' | 'system';
 
 const tabs: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
-  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'profile', label: 'Profile', icon: UserIcon },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'system', label: 'System', icon: Database },
@@ -28,7 +28,6 @@ export const Settings = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -40,7 +39,6 @@ export const Settings = () => {
       </motion.div>
 
       <div className="grid gap-8 lg:grid-cols-4">
-        {/* Sidebar */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -67,7 +65,6 @@ export const Settings = () => {
           </GlassCard>
         </motion.div>
 
-        {/* Content */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
@@ -85,66 +82,111 @@ export const Settings = () => {
   );
 };
 
-const ProfileSettings = () => (
-  <GlassCard className="p-6">
-    <h2 className="mb-6 text-xl font-semibold text-foreground">Profile Settings</h2>
-    <div className="space-y-6">
-      <div className="flex items-center gap-6">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-2xl font-bold text-secondary-foreground">
-          JA
+const ProfileSettings = () => {
+  const { user, updateUser } = useAuthStore();
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    location: user?.location || '',
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        location: user.location || '',
+      });
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const response = await api.put('/users/profile', {
+        name: formData.name,
+        location: formData.location,
+        email: formData.email,
+      });
+      updateUser(response.data);
+      toast.success('Profile updated successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <GlassCard className="p-6">
+      <h2 className="mb-6 text-xl font-semibold text-foreground">Profile Settings</h2>
+      <div className="space-y-6">
+        <div className="flex items-center gap-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-2xl font-bold text-secondary-foreground">
+            {user?.name?.charAt(0)}
+          </div>
+          <div>
+            <GradientButton variant="outline" size="sm">
+              Change Avatar
+            </GradientButton>
+            <p className="mt-2 text-xs text-muted-foreground">
+              JPG, PNG or GIF. Max size 2MB
+            </p>
+          </div>
         </div>
-        <div>
-          <GradientButton variant="outline" size="sm">
-            Change Avatar
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Full Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="input-premium w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Email</label>
+            <input
+              type="email"
+              value={formData.email}
+              disabled
+              className="input-premium w-full opacity-50 cursor-not-allowed"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Role</label>
+            <input
+              type="text"
+              value={user?.role || ''}
+              disabled
+              className="input-premium w-full opacity-50 cursor-not-allowed"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Location</label>
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              className="input-premium w-full"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <GradientButton
+            variant="primary"
+            icon={<Save className="h-4 w-4" />}
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </GradientButton>
-          <p className="mt-2 text-xs text-muted-foreground">
-            JPG, PNG or GIF. Max size 2MB
-          </p>
         </div>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Full Name</label>
-          <input
-            type="text"
-            defaultValue="John Administrator"
-            className="input-premium w-full"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Email</label>
-          <input
-            type="email"
-            defaultValue="admin@company.com"
-            className="input-premium w-full"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Role</label>
-          <input
-            type="text"
-            defaultValue="System Administrator"
-            disabled
-            className="input-premium w-full opacity-50"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Location</label>
-          <input
-            type="text"
-            defaultValue="Bangalore, India"
-            className="input-premium w-full"
-          />
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <GradientButton variant="primary" icon={<Save className="h-4 w-4" />}>
-          Save Changes
-        </GradientButton>
-      </div>
-    </div>
-  </GlassCard>
-);
+    </GlassCard>
+  );
+};
 
 const NotificationSettings = () => (
   <GlassCard className="p-6">
@@ -171,32 +213,91 @@ const NotificationSettings = () => (
   </GlassCard>
 );
 
-const SecuritySettings = () => (
-  <GlassCard className="p-6">
-    <h2 className="mb-6 text-xl font-semibold text-foreground">Security Settings</h2>
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Current Password</label>
-        <input type="password" className="input-premium w-full" placeholder="••••••••" />
-      </div>
-      <div className="grid gap-6 sm:grid-cols-2">
+const SecuritySettings = () => {
+  const { user } = useAuthStore();
+  const [passwords, setPasswords] = useState({
+    current: '',
+    new: '',
+    confirm: '',
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleUpdatePassword = async () => {
+    if (passwords.new !== passwords.confirm) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (passwords.new.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await api.put('/users/password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.new,
+        email: user?.email,
+      });
+      toast.success('Password updated successfully');
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update password');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <GlassCard className="p-6">
+      <h2 className="mb-6 text-xl font-semibold text-foreground">Security Settings</h2>
+      <div className="space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">New Password</label>
-          <input type="password" className="input-premium w-full" placeholder="••••••••" />
+          <label className="text-sm font-medium text-foreground">Current Password</label>
+          <input
+            type="password"
+            className="input-premium w-full"
+            placeholder="••••••••"
+            value={passwords.current}
+            onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+          />
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Confirm Password</label>
-          <input type="password" className="input-premium w-full" placeholder="••••••••" />
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">New Password</label>
+            <input
+              type="password"
+              className="input-premium w-full"
+              placeholder="••••••••"
+              value={passwords.new}
+              onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Confirm Password</label>
+            <input
+              type="password"
+              className="input-premium w-full"
+              placeholder="••••••••"
+              value={passwords.confirm}
+              onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <GradientButton
+            variant="primary"
+            icon={<Shield className="h-4 w-4" />}
+            onClick={handleUpdatePassword}
+            disabled={isUpdating}
+          >
+            {isUpdating ? 'Updating...' : 'Update Password'}
+          </GradientButton>
         </div>
       </div>
-      <div className="flex justify-end">
-        <GradientButton variant="primary" icon={<Shield className="h-4 w-4" />}>
-          Update Password
-        </GradientButton>
-      </div>
-    </div>
-  </GlassCard>
-);
+    </GlassCard>
+  );
+};
 
 const SystemSettings = () => (
   <GlassCard className="p-6">

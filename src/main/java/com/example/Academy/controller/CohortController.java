@@ -28,37 +28,53 @@ public class CohortController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Cohort> createCohort(
-        @Valid @RequestBody CreateCohortRequest request
-    ) {
+            @Valid @RequestBody CreateCohortRequest request) {
         return ResponseEntity.ok(
-            cohortService.createCohort(request)
-        );
+                cohortService.createCohort(request));
     }
-
 
     @GetMapping
-    public ResponseEntity<List<CohortResponse>> getAllCohorts() {
-        return ResponseEntity.ok(
-            cohortService.getAllCohorts()
-                .stream()
-                .map(cohortService::mapToResponse)
-                .toList()
-        );
-    }
+    public ResponseEntity<List<CohortResponse>> getAllCohorts(@RequestParam(required = false) String email) {
+        List<Cohort> cohorts;
 
+        if (email != null && !email.isEmpty()) {
+            System.out.println("DEBUG: getAllCohorts called with email: " + email);
+            try {
+                cohorts = cohortService.getCohortsForUser(email);
+                System.out.println("DEBUG: getCohortsForUser returned " + cohorts.size() + " cohorts.");
+            } catch (Exception e) {
+                System.err.println("DEBUG: Error fetching cohorts for user: " + e.getMessage());
+                // If user not found, fallback to all or empty? Let's return empty to be safe
+                // OR fallback to all if we assume earlier behavior.
+                // Given the requirement "only assigned data must be shown", erroring or empty
+                // is safer than showing all.
+                // But specifically for robustness, if email is invalid, maybe return empty.
+                return ResponseEntity.badRequest().build();
+            }
+        } else {
+            System.out.println("DEBUG: getAllCohorts called WITHOUT email. Returning empty list for safety.");
+            // previously returned all cohorts, which leaked data. Now default to empty.
+            cohorts = List.of();
+        }
+
+        return ResponseEntity.ok(
+                cohorts.stream()
+                        .map(cohortService::mapToResponse)
+                        .toList());
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<Cohort> getCohortById(@PathVariable Long id) {
         Optional<Cohort> cohort = cohortService.getCohortById(id);
         return cohort.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/code/{code}")
     public ResponseEntity<Cohort> getCohortByCode(@PathVariable String code) {
         Optional<Cohort> cohort = cohortService.getCohortByCode(code);
         return cohort.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
@@ -86,8 +102,8 @@ public class CohortController {
     @PostMapping("/{cohortId}/trainers/additional")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> addAdditionalTrainer(@PathVariable Long cohortId,
-                                                   @RequestParam Long trainerId,
-                                                   @RequestParam CohortTrainerMapping.Role role) {
+            @RequestParam Long trainerId,
+            @RequestParam CohortTrainerMapping.Role role) {
         cohortService.addAdditionalTrainer(cohortId, trainerId, role);
         return ResponseEntity.ok().build();
     }
@@ -123,8 +139,8 @@ public class CohortController {
     @PostMapping("/{cohortId}/mentors/additional")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> addAdditionalMentor(@PathVariable Long cohortId,
-                                                  @RequestParam Long mentorId,
-                                                  @RequestParam CohortMentorMapping.Role role) {
+            @RequestParam Long mentorId,
+            @RequestParam CohortMentorMapping.Role role) {
         cohortService.addAdditionalMentor(cohortId, mentorId, role);
         return ResponseEntity.ok().build();
     }

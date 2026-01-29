@@ -8,6 +8,7 @@ public class CohortResponse {
     private String bu;
     private String skill;
     private Integer activeGencCount;
+    private Integer totalGencCount;
     private String trainingLocation;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -26,33 +27,91 @@ public class CohortResponse {
     }
 
     // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getBu() { return bu; }
-    public void setBu(String bu) { this.bu = bu; }
+    public String getCode() {
+        return code;
+    }
 
-    public String getSkill() { return skill; }
-    public void setSkill(String skill) { this.skill = skill; }
+    public void setCode(String code) {
+        this.code = code;
+    }
 
-    public Integer getActiveGencCount() { return activeGencCount; }
-    public void setActiveGencCount(Integer activeGencCount) { this.activeGencCount = activeGencCount; }
+    public String getBu() {
+        return bu;
+    }
 
-    public String getTrainingLocation() { return trainingLocation; }
-    public void setTrainingLocation(String trainingLocation) { this.trainingLocation = trainingLocation; }
+    public void setBu(String bu) {
+        this.bu = bu;
+    }
 
-    public LocalDate getStartDate() { return startDate; }
-    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+    public String getSkill() {
+        return skill;
+    }
 
-    public LocalDate getEndDate() { return endDate; }
-    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+    public void setSkill(String skill) {
+        this.skill = skill;
+    }
 
-    public Integer getProgress() { return progress; }
-    public void setProgress(Integer progress) { this.progress = progress; }
+    public Integer getActiveGencCount() {
+        return activeGencCount;
+    }
 
-    public UserSummary getCoach() { return coach; }
-    public void setCoach(UserSummary coach) { this.coach = coach; }
+    public void setActiveGencCount(Integer activeGencCount) {
+        this.activeGencCount = activeGencCount;
+    }
+
+    public Integer getTotalGencCount() {
+        return totalGencCount;
+    }
+
+    public void setTotalGencCount(Integer totalGencCount) {
+        this.totalGencCount = totalGencCount;
+    }
+
+    public String getTrainingLocation() {
+        return trainingLocation;
+    }
+
+    public void setTrainingLocation(String trainingLocation) {
+        this.trainingLocation = trainingLocation;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public Integer getProgress() {
+        return progress;
+    }
+
+    public void setProgress(Integer progress) {
+        this.progress = progress;
+    }
+
+    public UserSummary getCoach() {
+        return coach;
+    }
+
+    public void setCoach(UserSummary coach) {
+        this.coach = coach;
+    }
 }

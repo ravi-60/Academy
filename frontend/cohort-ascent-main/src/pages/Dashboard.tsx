@@ -57,19 +57,22 @@ export const Dashboard = () => {
 
   useEffect(() => {
     // Load cohorts from backend
-    console.log('Loading cohorts...');
-    cohortApi.getAllCohorts()
-      .then(response => {
-        console.log('Cohorts API response:', response);
-        console.log('Cohorts loaded:', response.data);
-        setCohorts(response.data);
-      })
-      .catch(error => {
-        console.error('Failed to load cohorts:', error);
-        console.error('Error details:', error.response?.data);
-        toast.error('Failed to load cohorts data');
-        // Don't break the app if API fails - just show empty state
-      });
+    // Load cohorts from backend
+    console.log('Loading cohorts for:', user?.email);
+    if (user?.email) {
+      cohortApi.getAllCohorts(user.email)
+        .then(response => {
+          console.log('Cohorts API response:', response);
+          console.log('Cohorts loaded:', response.data);
+          setCohorts(response.data);
+        })
+        .catch(error => {
+          console.error('Failed to load cohorts:', error);
+          console.error('Error details:', error.response?.data);
+          toast.error('Failed to load cohorts data');
+          // Don't break the app if API fails - just show empty state
+        });
+    }
 
     // Connect WebSocket for real-time updates
     try {
@@ -89,7 +92,7 @@ export const Dashboard = () => {
         console.error('Error disconnecting socket:', error);
       }
     };
-  }, []);
+  }, [user]);
 
 
   return (

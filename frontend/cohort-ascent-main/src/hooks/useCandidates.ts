@@ -7,8 +7,6 @@ export interface Candidate {
   candidateId: string;
   name: string;
   email: string | null;
-  skill: string;
-  location: string;
   cohort: {
     id: number;
     code: string;
@@ -21,19 +19,20 @@ export interface Candidate {
   };
   status: 'ACTIVE' | 'INACTIVE' | 'COMPLETED';
   joinDate: string;
+  endDate: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export const useCandidates = (cohortId?: string) => {
+export const useCandidates = (cohortId?: string, email?: string) => {
   return useQuery({
-    queryKey: ['candidates', cohortId],
+    queryKey: ['candidates', cohortId, email],
     queryFn: async () => {
       if (cohortId) {
         const response = await api.get(`/candidates/cohort/${cohortId}`);
         return response.data as Candidate[];
       } else {
-        const response = await api.get('/candidates');
+        const response = await api.get('/candidates', { params: { email } });
         return response.data as Candidate[];
       }
     },

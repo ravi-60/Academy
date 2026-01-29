@@ -23,7 +23,7 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
@@ -40,9 +40,9 @@ export const Login = () => {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, userId, email: userEmail, name, role } = response.data;
-      
-      const user = { id: userId, email: userEmail, name, role };
-      
+
+      const user = { id: userId, email: userEmail, name, role: role as any };
+
       localStorage.setItem('authToken', token);
       login(user);
       navigate('/dashboard');

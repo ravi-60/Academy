@@ -13,10 +13,11 @@ import {
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate, useBulkCreateCandidates } from '@/hooks/useCandidates';
-import { useCohorts } from '@/hooks/useCohorts';
+import { useCohorts } from '@/hooks/useCohortsBackend';
 import { AddCandidateModal } from '@/components/modals/AddCandidateModal';
 import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
 
 const statusConfig = {
   active: { label: 'Active', class: 'badge-active' },
@@ -25,6 +26,7 @@ const statusConfig = {
 };
 
 export const Candidates = () => {
+  const user = useAuthStore((state) => state.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [cohortFilter, setCohortFilter] = useState('all');
@@ -32,9 +34,10 @@ export const Candidates = () => {
   const [showCSVUpload, setShowCSVUpload] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<any>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: candidates = [], isLoading } = useCandidates();
+  const { data: candidates = [], isLoading } = useCandidates(undefined, user?.email);
   const { data: cohorts = [] } = useCohorts();
   const createCandidate = useCreateCandidate();
   const updateCandidate = useUpdateCandidate();
@@ -44,10 +47,10 @@ export const Candidates = () => {
   const filteredCandidates = candidates.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.candidate_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.candidateId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    const matchesCohort = cohortFilter === 'all' || c.cohort_id === cohortFilter;
+    const matchesStatus = statusFilter === 'all' || c.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesCohort = cohortFilter === 'all' || c.cohort.id.toString() === cohortFilter.toString();
     return matchesSearch && matchesStatus && matchesCohort;
   });
 
@@ -55,7 +58,13 @@ export const Candidates = () => {
     if (editingCandidate) {
       updateCandidate.mutate({
         id: editingCandidate.id,
-        ...data,
+        candidateId: data.associate_id,
+        name: data.name,
+        email: data.cognizant_email_id || null,
+        status: data.status.toUpperCase() as any,
+        joinDate: data.join_date,
+        endDate: data.end_date,
+        cohort: cohorts.find(c => c.id.toString() === data.cohort_id?.toString()) || editingCandidate.cohort,
       }, {
         onSuccess: () => {
           setShowAddCandidate(false);
@@ -63,29 +72,52 @@ export const Candidates = () => {
         },
       });
     } else {
+      const selectedCohort = cohorts.find(c => c.id.toString() === data.cohort_id?.toString()) || cohorts[0];
       createCandidate.mutate({
-        ...data,
-        cohort_id: cohortFilter !== 'all' ? cohortFilter : cohorts[0]?.id,
-        email: data.email || null,
-      }, {
+        candidateId: data.associate_id,
+        name: data.name,
+        email: data.cognizant_email_id || null,
+        status: data.status?.toUpperCase() as any || 'ACTIVE',
+        joinDate: data.join_date || selectedCohort?.startDate,
+        endDate: data.end_date || selectedCohort?.endDate,
+        cohort: selectedCohort,
+      } as any, {
         onSuccess: () => setShowAddCandidate(false),
       });
     }
   };
 
   const handleCSVUpload = (data: Record<string, string>[]) => {
-    const candidatesToCreate = data.map((row) => ({
-      candidate_id: row.candidate_id || row.id || `GC-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      name: row.name,
-      email: row.email || null,
-      skill: row.skill || 'General',
-      location: row.location || 'Unknown',
-      cohort_id: cohortFilter !== 'all' ? cohortFilter : cohorts[0]?.id,
-      status: 'active',
-      join_date: row.join_date || new Date().toISOString().split('T')[0],
-    }));
+    const candidatesToCreate = data.map((row, index) => {
+      const cohortCode = row.cohort_code || row.cohortcode;
+      const targetCohort = cohorts.find(c => c.code.toLowerCase() === cohortCode?.toLowerCase());
+
+      if (!targetCohort) {
+        console.warn(`Skipping row ${index + 1}: Cohort code "${cohortCode}" not found.`);
+        return null;
+      }
+
+      return {
+        candidateId: row.associate_id || row.associateid || `GC-${Date.now()}-${index}`,
+        name: row.name,
+        email: row.cognizant_email_id || row.cognizantemailid || null,
+        cohort: targetCohort,
+        status: 'ACTIVE' as const,
+        joinDate: row.join_date || row.joindate || targetCohort.startDate,
+        endDate: row.end_date || row.enddate || targetCohort.endDate,
+      };
+    }).filter(Boolean) as any[];
+
+    if (candidatesToCreate.length === 0) {
+      toast.error('No valid candidates found in CSV. Ensure Cohort Codes are correct.');
+      return;
+    }
+
     bulkCreate.mutate(candidatesToCreate, {
-      onSuccess: () => setShowCSVUpload(false),
+      onSuccess: () => {
+        setShowCSVUpload(false);
+        toast.success(`Successfully imported ${candidatesToCreate.length} candidates across cohorts.`);
+      },
     });
   };
 
@@ -96,15 +128,14 @@ export const Candidates = () => {
     }
 
     const csvContent = [
-      ['Candidate ID', 'Name', 'Email', 'Skill', 'Location', 'Status', 'Join Date'],
+      ['Candidate ID', 'Name', 'Email', 'Status', 'Join Date', 'Cohort'],
       ...filteredCandidates.map((c) => [
-        c.candidate_id,
+        c.candidateId,
         c.name,
         c.email || '',
-        c.skill,
-        c.location,
         c.status,
-        c.join_date,
+        c.joinDate,
+        c.cohort.code,
       ]),
     ]
       .map((row) => row.join(','))
@@ -123,12 +154,18 @@ export const Candidates = () => {
   const handleEdit = (candidate: any) => {
     setEditingCandidate({
       ...candidate,
-      status: candidate.status as 'active' | 'inactive' | 'completed',
+      associate_id: candidate.candidateId,
+      cognizant_email_id: candidate.email || '',
+      cohort_code: candidate.cohort.code,
+      cohort_id: candidate.cohort.id.toString(),
+      join_date: candidate.joinDate ? new Date(candidate.joinDate).toISOString().split('T')[0] : '',
+      end_date: candidate.endDate ? new Date(candidate.endDate).toISOString().split('T')[0] : '',
+      status: candidate.status.toLowerCase() as 'active' | 'inactive' | 'completed',
     });
     setShowAddCandidate(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this candidate?')) {
       deleteCandidate.mutate(id);
     }
@@ -139,6 +176,7 @@ export const Candidates = () => {
     setIsDragOver(false);
     const file = e.dataTransfer.files[0];
     if (file) {
+      setPendingFile(file);
       setShowCSVUpload(true);
     }
   };
@@ -158,15 +196,15 @@ export const Candidates = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <GradientButton 
-            variant="outline" 
+          <GradientButton
+            variant="outline"
             icon={<Download className="h-4 w-4" />}
             onClick={handleExport}
           >
             Export
           </GradientButton>
-          <GradientButton 
-            variant="primary" 
+          <GradientButton
+            variant="primary"
             icon={<Plus className="h-4 w-4" />}
             onClick={() => {
               setEditingCandidate(null);
@@ -186,9 +224,8 @@ export const Candidates = () => {
       >
         <GlassCard
           variant={isDragOver ? 'elevated' : 'default'}
-          className={`border-2 border-dashed p-8 text-center transition-all ${
-            isDragOver ? 'border-primary bg-primary/5' : 'border-border/50'
-          }`}
+          className={`border-2 border-dashed p-8 text-center transition-all ${isDragOver ? 'border-primary bg-primary/5' : 'border-border/50'
+            }`}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragOver(true);
@@ -209,14 +246,16 @@ export const Candidates = () => {
             accept=".csv,.xlsx,.xls"
             className="hidden"
             onChange={(e) => {
-              if (e.target.files?.[0]) {
+              const selectedFile = e.target.files?.[0];
+              if (selectedFile) {
+                setPendingFile(selectedFile);
                 setShowCSVUpload(true);
               }
             }}
           />
-          <GradientButton 
-            variant="outline" 
-            size="sm" 
+          <GradientButton
+            variant="outline"
+            size="sm"
             className="mt-4"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -264,7 +303,7 @@ export const Candidates = () => {
             >
               <option value="all">All Cohorts</option>
               {cohorts.map((cohort) => (
-                <option key={cohort.id} value={cohort.id}>{cohort.name}</option>
+                <option key={cohort.id} value={cohort.id}>{cohort.code}</option>
               ))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -290,10 +329,9 @@ export const Candidates = () => {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Candidate ID</th>
+                      <th>Associate ID</th>
                       <th>Name</th>
-                      <th>Skill</th>
-                      <th>Location</th>
+                      <th>Cohort</th>
                       <th>Status</th>
                       <th>Join Date</th>
                       <th className="text-right">Actions</th>
@@ -308,7 +346,7 @@ export const Candidates = () => {
                         transition={{ delay: 0.4 + index * 0.03 }}
                         className="group"
                       >
-                        <td className="font-mono text-sm">{candidate.candidate_id}</td>
+                        <td className="font-mono text-sm">{candidate.candidateId}</td>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-neon-blue/20 text-sm font-semibold text-primary">
@@ -320,29 +358,28 @@ export const Candidates = () => {
                             </div>
                           </div>
                         </td>
-                        <td>{candidate.skill}</td>
-                        <td>{candidate.location}</td>
+                        <td className="text-sm font-medium text-primary/80">{candidate.cohort.code}</td>
                         <td>
-                          <span className={`badge-status ${statusConfig[candidate.status as keyof typeof statusConfig]?.class || 'bg-muted'}`}>
-                            {statusConfig[candidate.status as keyof typeof statusConfig]?.label || candidate.status}
+                          <span className={`badge-status ${statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.class || 'bg-muted'}`}>
+                            {statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.label || candidate.status}
                           </span>
                         </td>
                         <td className="text-muted-foreground">
-                          {new Date(candidate.join_date).toLocaleDateString('en-US', {
+                          {candidate.joinDate ? new Date(candidate.joinDate).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
-                          })}
+                          }) : '-'}
                         </td>
                         <td>
                           <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            <button 
+                            <button
                               className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                               onClick={() => handleEdit(candidate)}
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
-                            <button 
+                            <button
                               className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => handleDelete(candidate.id)}
                             >
@@ -366,15 +403,15 @@ export const Candidates = () => {
                 </p>
                 {candidates.length === 0 && (
                   <div className="mt-6 flex justify-center gap-3">
-                    <GradientButton 
-                      variant="outline" 
+                    <GradientButton
+                      variant="outline"
                       size="sm"
                       onClick={() => setShowCSVUpload(true)}
                     >
                       Upload CSV
                     </GradientButton>
-                    <GradientButton 
-                      variant="primary" 
+                    <GradientButton
+                      variant="primary"
                       size="sm"
                       onClick={() => setShowAddCandidate(true)}
                     >
@@ -396,17 +433,21 @@ export const Candidates = () => {
           setEditingCandidate(null);
         }}
         onSubmit={handleAddCandidate}
-        cohortId={cohortFilter !== 'all' ? cohortFilter : cohorts[0]?.id || ''}
+        cohortId={cohortFilter !== 'all' ? cohortFilter.toString() : (cohorts[0]?.id?.toString() || '')}
         isLoading={createCandidate.isPending || updateCandidate.isPending}
         initialData={editingCandidate}
         mode={editingCandidate ? 'edit' : 'add'}
       />
       <CSVUploadModal
         isOpen={showCSVUpload}
-        onClose={() => setShowCSVUpload(false)}
+        onClose={() => {
+          setShowCSVUpload(false);
+          setPendingFile(null);
+        }}
         onUpload={handleCSVUpload}
         title="Import Candidates"
-        requiredColumns={['name', 'skill', 'location']}
+        requiredColumns={['name', 'associate_id', 'cohort_code']}
+        initialFile={pendingFile}
       />
     </div>
   );

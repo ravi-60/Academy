@@ -6,13 +6,14 @@ export interface Cohort {
   bu: string;
   skill: string;
   activeGencCount: number;
+  totalGencCount: number;
   trainingLocation: string;
   startDate: string;
   endDate: string;
 }
 
 export const cohortApi = {
-  getAllCohorts: () => api.get<Cohort[]>('/cohorts'),
+  getAllCohorts: (email?: string) => api.get<Cohort[]>('/cohorts', { params: { email } }),
 
   getCohortById: (id: number) => api.get<Cohort>(`/cohorts/${id}`),
 

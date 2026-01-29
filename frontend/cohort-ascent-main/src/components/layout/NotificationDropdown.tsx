@@ -74,7 +74,7 @@ export const NotificationDropdown = () => {
     const thisWeek: any[] = [];
     const earlier: any[] = [];
 
-    notifications.forEach((n) => {
+    notifications.filter(n => !n.isRead).forEach((n) => {
       const date = new Date(n.createdAt);
       if (isToday(date)) today.push(n);
       else if (isThisWeek(date)) thisWeek.push(n);
