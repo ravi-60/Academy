@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   GraduationCap,
@@ -55,7 +55,15 @@ const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
 export const CohortDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType;
+    if (tabParam && ['overview', 'candidates', 'stakeholders', 'efforts', 'reports'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   const { data: cohort, isLoading: loading, error } = useCohort(id ? parseInt(id) : 0);
   const { data: candidates = [] } = useCandidates(id ? id : '');

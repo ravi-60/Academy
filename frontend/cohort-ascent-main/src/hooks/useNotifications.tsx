@@ -19,7 +19,7 @@ const mapEffortToNotification = (effort: EffortActivity): Notification => {
         message: effort.type === 'EFFORT_SUBMITTED'
             ? `${effort.trainerMentorName} submitted ${effort.effortHours}h of technical training for ${effort.cohortCode}`
             : `System generated weekly brief for ${effort.cohortCode}: ${effort.effortHours}h cumulative engagement.`,
-        link: `/cohorts/${effort.cohortCode}`,
+        link: `/cohorts/${effort.cohortCode}?tab=efforts`,
         entityId: effort.cohortCode,
         isRead: false,
         createdAt: effort.timestamp,

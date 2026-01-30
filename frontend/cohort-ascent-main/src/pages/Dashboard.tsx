@@ -7,11 +7,12 @@ import {
   Clock,
   ArrowUpRight,
   MoreHorizontal,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { cohortApi, Cohort } from "@/cohortApi";
-import { connectSocket, disconnectSocket, EffortActivity } from "@/integrations/realtime/socket";
 import { useAuthStore } from '@/stores/authStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 import { StatsCard } from '@/components/ui/StatsCard';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -20,8 +21,13 @@ import { toast } from 'sonner';
 
 export const Dashboard = () => {
   const { user } = useAuthStore();
+  const { notifications } = useNotificationStore();
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
-  const [recentActivity, setRecentActivity] = useState<EffortActivity[]>([]);
+
+  // Filter notifications for recent effort-related activities
+  const recentActivity = notifications
+    .filter(n => n.type === 'REPORT_SUBMITTED')
+    .slice(0, 5);
 
   const navigate = useNavigate();
 
@@ -73,33 +79,6 @@ export const Dashboard = () => {
           // Don't break the app if API fails - just show empty state
         });
     }
-
-    // Connect WebSocket for real-time updates
-    try {
-      if (user?.id) {
-        connectSocket(
-          user.id.toString(),
-          (activity: EffortActivity) => {
-            console.log('Received activity:', activity);
-            setRecentActivity(prev => [activity, ...prev.slice(0, 4)]);
-          },
-          (notification) => {
-            console.log('Notification received in dashboard:', notification);
-          }
-        );
-      }
-    } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
-      // Don't break the app if WebSocket fails
-    }
-
-    return () => {
-      try {
-        disconnectSocket();
-      } catch (error) {
-        console.error('Error disconnecting socket:', error);
-      }
-    };
   }, [user]);
 
 
@@ -241,25 +220,30 @@ export const Dashboard = () => {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
-                  className="flex items-start gap-3"
+                  className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/30 transition-colors"
                 >
-                  <div className="mt-1 rounded-full p-1 bg-info/20">
-                    <Clock className="h-4 w-4 text-info" />
+                  <div className="mt-1 rounded-full p-2 bg-primary/10">
+                    <Zap className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">
-                      {activity.type === 'EFFORT_SUBMITTED'
-                        ? `${activity.trainerMentorName} submitted ${activity.effortHours}h effort`
-                        : `Weekly summary: ${activity.effortHours}h total for ${activity.cohortCode}`
-                      }
+                    <p className="text-sm font-medium text-foreground leading-snug">
+                      {activity.message}
                     </p>
-                    <p className="text-xs text-muted-foreground">Cohort: {activity.cohortCode}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                      {activity.title}
+                    </p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(activity.timestamp).toLocaleString()}
+                  <span className="text-[10px] text-muted-foreground font-medium whitespace-nowrap">
+                    {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </motion.div>
               ))}
+              {recentActivity.length === 0 && (
+                <div className="py-10 text-center text-muted-foreground">
+                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No recent activity reported</p>
+                </div>
+              )}
             </div>
           </GlassCard>
         </motion.div>

@@ -43,6 +43,9 @@ public class EffortService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     public StakeholderEffort submitEffort(StakeholderEffort effort, Long userId) {
         // Validate cohort exists
         Cohort cohort = cohortRepository.findById(effort.getCohort().getId())
@@ -68,8 +71,20 @@ public class EffortService {
         // Update weekly summary
         updateWeeklySummary(cohort, effort.getEffortDate(), updatedBy.getName());
 
-        // Send email notification
+        // Send email notification (to Admins only)
         emailService.sendDailyEffortNotification(savedEffort);
+
+        // Send In-App notification to Admins
+        notificationService.notifyRole(
+                "ADMIN",
+                "REPORT_SUBMITTED",
+                "Intelligence Report: Effort Logged",
+                String.format("%s submitted %.1fh of technical training for %s",
+                        updatedBy.getName(),
+                        savedEffort.getEffortHours(),
+                        cohort.getCode()),
+                "/cohorts/" + cohort.getId() + "?tab=efforts",
+                userId);
 
         return savedEffort;
     }
@@ -258,6 +273,17 @@ public class EffortService {
 
         updateWeeklySummaryWithTotals(cohort, dto.getWeekStartDate(), submittedBy.getName(), totalH, techH, bhH,
                 mentorH, buddyH, dto.getHolidays());
+
+        // Send In-App notification to Admins for weekly summary
+        notificationService.notifyRole(
+                "ADMIN",
+                "REPORT_SUBMITTED",
+                "Weekly Operations Summary",
+                String.format("Weekly brief submitted for %s: %.1fh cumulative engagement.",
+                        cohort.getCode(),
+                        totalH),
+                "/cohorts/" + cohort.getId() + "?tab=efforts",
+                userId);
     }
 
     private void saveDayEffort(Cohort cohort, User stakeholder, StakeholderEffort.Role role,
