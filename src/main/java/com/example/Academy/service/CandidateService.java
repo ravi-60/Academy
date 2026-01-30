@@ -41,7 +41,7 @@ public class CandidateService {
     }
 
     public List<Candidate> getCandidatesByCohortId(Long cohortId) {
-        return candidateRepository.findByCohortIdAndStatus(cohortId, Candidate.Status.ACTIVE);
+        return candidateRepository.findByCohortId(cohortId);
     }
 
     public Optional<Candidate> getCandidateById(Long id) {
@@ -64,6 +64,10 @@ public class CandidateService {
             com.example.Academy.entity.Cohort cohort = savedCandidate.getCohort();
             boolean changed = false;
 
+            if (savedCandidate.getStatus() == Candidate.Status.ACTIVE) {
+                cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
+                changed = true;
+            }
             if (savedCandidate.getStatus() == Candidate.Status.ACTIVE) {
                 cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
                 changed = true;
@@ -117,6 +121,10 @@ public class CandidateService {
                         .orElse(null);
                 if (cohort != null) {
                     boolean changed = false;
+                    if (c.getStatus() == Candidate.Status.ACTIVE) {
+                        cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
+                        changed = true;
+                    }
                     if (c.getStatus() == Candidate.Status.ACTIVE) {
                         cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
                         changed = true;
@@ -183,19 +191,18 @@ public class CandidateService {
                     }
 
                     // Total Count (Active/Completed)
-                    boolean oldWasTotal = (oldStatus == Candidate.Status.ACTIVE
+                    boolean oldWasCounted = (oldStatus == Candidate.Status.ACTIVE
                             || oldStatus == Candidate.Status.COMPLETED);
-                    boolean newIsTotal = (candidateDetails.getStatus() == Candidate.Status.ACTIVE
+                    boolean newIsCounted = (candidateDetails.getStatus() == Candidate.Status.ACTIVE
                             || candidateDetails.getStatus() == Candidate.Status.COMPLETED);
 
-                    if (oldWasTotal != newIsTotal) {
-                        if (newIsTotal) {
+                    if (oldWasCounted != newIsCounted) {
+                        if (newIsCounted) {
                             cohort.setTotalGencCount(cohort.getTotalGencCount() + 1);
-                            changed = true;
                         } else {
                             cohort.setTotalGencCount(Math.max(0, cohort.getTotalGencCount() - 1));
-                            changed = true;
                         }
+                        changed = true;
                     }
 
                     if (changed) {
@@ -216,6 +223,10 @@ public class CandidateService {
             if (c.getCohort() != null) {
                 com.example.Academy.entity.Cohort cohort = c.getCohort();
                 boolean changed = false;
+                if (c.getStatus() == Candidate.Status.ACTIVE) {
+                    cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
+                    changed = true;
+                }
                 if (c.getStatus() == Candidate.Status.ACTIVE) {
                     cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
                     changed = true;

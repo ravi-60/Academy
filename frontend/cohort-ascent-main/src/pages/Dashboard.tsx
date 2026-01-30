@@ -76,10 +76,18 @@ export const Dashboard = () => {
 
     // Connect WebSocket for real-time updates
     try {
-      connectSocket((activity: EffortActivity) => {
-        console.log('Received activity:', activity);
-        setRecentActivity(prev => [activity, ...prev.slice(0, 4)]);
-      });
+      if (user?.id) {
+        connectSocket(
+          user.id.toString(),
+          (activity: EffortActivity) => {
+            console.log('Received activity:', activity);
+            setRecentActivity(prev => [activity, ...prev.slice(0, 4)]);
+          },
+          (notification) => {
+            console.log('Notification received in dashboard:', notification);
+          }
+        );
+      }
     } catch (error) {
       console.error('Failed to connect to WebSocket:', error);
       // Don't break the app if WebSocket fails
