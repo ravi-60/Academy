@@ -46,6 +46,7 @@ import {
 import { DayLog, WeeklyEffortSubmission } from '@/effortApi';
 import { useAuthStore } from '@/stores/authStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { reportApi } from '@/reportApi';
 
 
 
@@ -742,13 +743,43 @@ export const DailyEfforts = () => {
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
-                              <button
-                                onClick={() => toast.success('Report generation started...')}
-                                className="p-2 rounded-lg bg-muted/40 hover:bg-primary/10 hover:text-primary transition-all group/btn"
-                                title="Download Report"
-                              >
-                                <Download className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
-                              </button>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={async () => {
+                                        if (!selectedCohortId) return;
+                                        const toastId = toast.loading('Generating executive brief...');
+                                        try {
+                                          const res = await reportApi.exportReport({
+                                            cohortId: selectedCohortId,
+                                            startDate: summary.weekStartDate,
+                                            endDate: summary.weekEndDate,
+                                            format: 'PDF'
+                                          });
+                                          const url = window.URL.createObjectURL(new Blob([res.data]));
+                                          const link = document.createElement('a');
+                                          link.href = url;
+                                          link.setAttribute('download', `Audit_Report_${cohortDetail?.code}_${summary.weekStartDate}.pdf`);
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          link.remove();
+                                          toast.success('Report downloaded successfully!', { id: toastId });
+                                        } catch (e) {
+                                          toast.error('Download failed. Internal system error.', { id: toastId });
+                                        }
+                                      }}
+                                      className="h-11 w-11 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-lg shadow-primary/5 group/btn"
+                                    >
+                                      <Download className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs font-black">Download Executive PDF</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+
                               <div className="text-right">
                                 <p className="text-[9px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Verified</p>
                                 <div className="flex items-baseline gap-1.5 justify-end">

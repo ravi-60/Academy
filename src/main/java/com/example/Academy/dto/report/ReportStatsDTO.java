@@ -7,16 +7,18 @@ public class ReportStatsDTO {
     private Long totalTrainers;
     private Long totalMentors;
     private Long reportsGenerated;
+    private Double averageAttendance;
 
     public ReportStatsDTO() {
     }
 
     public ReportStatsDTO(BigDecimal totalEffortHours, Long totalTrainers, Long totalMentors,
-            Long reportsGenerated) {
+            Long reportsGenerated, Double averageAttendance) {
         this.totalEffortHours = totalEffortHours;
         this.totalTrainers = totalTrainers;
         this.totalMentors = totalMentors;
         this.reportsGenerated = reportsGenerated;
+        this.averageAttendance = averageAttendance;
     }
 
     public BigDecimal getTotalEffortHours() {
@@ -49,5 +51,13 @@ public class ReportStatsDTO {
 
     public void setReportsGenerated(Long reportsGenerated) {
         this.reportsGenerated = reportsGenerated;
+    }
+
+    public Double getAverageAttendance() {
+        return averageAttendance;
+    }
+
+    public void setAverageAttendance(Double averageAttendance) {
+        this.averageAttendance = averageAttendance;
     }
 }

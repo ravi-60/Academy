@@ -1,0 +1,22 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.example:Academy >-------------------------
+[INFO] Building Academy 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ Academy ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ Academy ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 71 source files with javac [debug parameters release 17] to target\classes
+[INFO] /F:/Project/Academy/src/main/java/com/example/Academy/util/PdfExecutiveReportGenerator.java: F:\Project\Academy\src\main\java\com\example\Academy\util\PdfExecutiveReportGenerator.java uses unchecked or unsafe operations.
+[INFO] /F:/Project/Academy/src/main/java/com/example/Academy/util/PdfExecutiveReportGenerator.java: Recompile with -Xlint:unchecked for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  9.394 s
+[INFO] Finished at: 2026-01-30T11:00:04+05:30
+[INFO] ------------------------------------------------------------------------
