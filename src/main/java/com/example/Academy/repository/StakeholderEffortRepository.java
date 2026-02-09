@@ -29,4 +29,6 @@ public interface StakeholderEffortRepository extends JpaRepository<StakeholderEf
                         @Param("role") StakeholderEffort.Role role,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
+
+        List<StakeholderEffort> findTop4ByTrainerMentorIdOrderByEffortDateDesc(Long coachId);
 }
