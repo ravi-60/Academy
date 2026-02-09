@@ -1,5 +1,6 @@
 package com.example.Academy.controller;
 
+import com.example.Academy.config.CustomUserDetailsService;
 import com.example.Academy.entity.User;
 import com.example.Academy.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private com.example.Academy.security.JwtService jwtService;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
@@ -29,9 +33,12 @@ public class AuthController {
 
             User user = userService.getUserByEmail(loginRequest.getEmail()).orElseThrow();
 
+            String token = jwtService
+                    .generateToken(new CustomUserDetailsService(userService).loadUserByUsername(user.getEmail()));
+
             return ResponseEntity.ok(new AuthResponse(
                     "Login successful",
-                    null,
+                    token,
                     user.getId(),
                     user.getEmail(),
                     user.getName(),
