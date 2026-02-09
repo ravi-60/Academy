@@ -466,7 +466,7 @@ export const Reports = () => {
                   <StatsCard
                     title="Resource Yield"
                     value={reportData?.stats.totalTrainers ? "OPTIMIZED" : "ELITE"}
-                    change={`${reportData?.stats.totalGenerations || 0} Nodes Active`}
+                    change={`${reportData?.stats.reportsGenerated || 0} Briefs Validated`}
                     changeType="neutral"
                     icon={Zap}
                     iconColor="success"
