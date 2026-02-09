@@ -204,7 +204,7 @@ export const Cohorts = () => {
               <Activity className="h-3 w-3" />
               Operational Flux • Live Streams
             </motion.div>
-            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white leading-tight">
               Training <span className="text-gradient">Cohorts</span>
             </h1>
             <p className="max-w-xl text-base text-slate-400 font-medium leading-relaxed">
@@ -248,7 +248,7 @@ export const Cohorts = () => {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Total Streams</p>
-            <p className="text-3xl font-bold text-foreground">{cohorts.length}</p>
+            <p className="text-3xl font-extrabold text-foreground">{cohorts.length}</p>
           </div>
           <div className="mt-4 flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
@@ -262,7 +262,7 @@ export const Cohorts = () => {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Total GenCs</p>
-            <p className="text-3xl font-bold text-foreground">{cohorts.reduce((acc, c) => acc + (c.candidateCount || 0), 0)}</p>
+            <p className="text-3xl font-extrabold text-foreground">{cohorts.reduce((acc, c) => acc + (c.candidateCount || 0), 0)}</p>
           </div>
           <div className="mt-4 flex items-center gap-2">
             <TrendingUp className="h-3 w-3 text-secondary" />
@@ -276,7 +276,7 @@ export const Cohorts = () => {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Locations</p>
-            <p className="text-3xl font-bold text-foreground">{locations.length}</p>
+            <p className="text-3xl font-extrabold text-foreground">{locations.length}</p>
           </div>
           <div className="mt-4 flex items-center gap-2">
             <MapPin className="h-3 w-3 text-primary" />

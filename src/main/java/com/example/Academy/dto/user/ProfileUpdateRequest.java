@@ -32,4 +32,14 @@ public class ProfileUpdateRequest {
     public void setEmail(String email) {
         this.email = email;
     }
+
+    private String avatar;
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
 }

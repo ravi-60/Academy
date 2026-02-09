@@ -30,8 +30,12 @@ export const UserDropdown = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 transition-colors hover:bg-muted/50">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-sm font-semibold text-secondary-foreground">
-            {user?.name?.charAt(0) || 'U'}
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-sm font-semibold text-secondary-foreground overflow-hidden">
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+            ) : (
+              user?.name?.charAt(0) || 'U'
+            )}
           </div>
           <span className="text-sm font-medium text-foreground">{user?.name}</span>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />

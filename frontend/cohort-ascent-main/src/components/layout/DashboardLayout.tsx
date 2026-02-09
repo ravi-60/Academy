@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
   { label: 'Candidates', icon: Users, path: '/candidates', roles: ['COACH', 'LOCATION_LEAD'] },
   { label: 'Log Efforts', icon: Calendar, path: '/efforts', roles: ['COACH', 'LOCATION_LEAD'] },
   { label: 'Reports', icon: BarChart3, path: '/reports', roles: ['ADMIN', 'COACH', 'LOCATION_LEAD'] },
-  { label: 'Settings', icon: Settings, path: '/settings', roles: ['ADMIN'] },
+  { label: 'Settings', icon: Settings, path: '/settings', roles: ['ADMIN', 'COACH', 'LOCATION_LEAD'] },
 ];
 
 export const DashboardLayout = () => {
@@ -160,8 +160,12 @@ export const DashboardLayout = () => {
           {/* User Section */}
           <div className="border-t border-border/50 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-sm font-semibold text-secondary-foreground">
-                {user?.name?.charAt(0) || 'U'}
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-secondary to-neon-purple text-sm font-semibold text-secondary-foreground overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+                ) : (
+                  user?.name?.charAt(0) || 'U'
+                )}
               </div>
               <AnimatePresence mode="wait">
                 {sidebarOpen && (

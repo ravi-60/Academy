@@ -92,51 +92,53 @@ export const Activity = () => {
                 <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-secondary/5 blur-[120px]" />
             </div>
 
-            {/* Header Section */}
-            <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                        <motion.button
-                            whileHover={{ scale: 1.05, x: -4 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate(-1)}
-                            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </motion.button>
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary uppercase tracking-widest">
-                            <ShieldCheck className="h-3 w-3" />
-                            Governance & Compliance
+            {/* Premium Hero Section */}
+            <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 lg:p-12 shadow-2xl">
+                <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/20 blur-[100px]" />
+                <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-secondary/20 blur-[100px]" />
+
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.05, x: -4 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => navigate(-1)}
+                                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl text-white/50 transition-all hover:bg-white/10 hover:text-white"
+                            >
+                                <ArrowLeft className="h-5 w-5" />
+                            </motion.button>
+                            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-[0.2em]">
+                                <ShieldCheck className="h-3 w-3" />
+                                Governance & Compliance
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-white lg:text-5xl">
-                            Audit <span className="gradient-text">Command Center</span>
+                        <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white">
+                            Audit <span className="text-gradient">Command Center</span>
                         </h1>
-                        <p className="mt-3 text-lg text-muted-foreground max-w-2xl leading-relaxed font-medium">
+                        <p className="max-w-xl text-lg text-slate-400 font-medium leading-relaxed">
                             Real-time synchronization of mission-critical platform events. Every modification is cryptographically tracked for operational transparency.
                         </p>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                    <GradientButton
-                        variant="outline"
-                        className="rounded-2xl h-12 bg-card/40 border-border/50 backdrop-blur-xl"
-                        onClick={handleRefresh}
-                        icon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-                    >
-                        Sync Now
-                    </GradientButton>
-                    <GradientButton
-                        variant="primary"
-                        className="rounded-2xl h-12 shadow-glow-cyan"
-                        icon={<Download className="h-4 w-4" />}
-                    >
-                        Export Audit
-                    </GradientButton>
+                    <div className="flex items-center gap-4">
+                        <GradientButton
+                            variant="outline"
+                            className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                            onClick={handleRefresh}
+                            icon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+                        >
+                            Sync Now
+                        </GradientButton>
+                        <GradientButton
+                            variant="primary"
+                            icon={<Download className="h-4 w-4" />}
+                        >
+                            Export Audit
+                        </GradientButton>
+                    </div>
                 </div>
-            </div>
+            </section>
 
             {/* Control Panel */}
             <div className="relative z-10 grid gap-4 lg:grid-cols-4">

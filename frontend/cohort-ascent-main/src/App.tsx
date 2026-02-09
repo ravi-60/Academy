@@ -91,14 +91,7 @@ const App = () => (
                   </AdminRoute>
                 }
               />
-              <Route
-                path="/settings"
-                element={
-                  <AdminRoute>
-                    <Settings />
-                  </AdminRoute>
-                }
-              />
+              <Route path="/settings" element={<Settings />} />
 
               {/* Stakeholders Accessible to Admin and Coach */}
               <Route

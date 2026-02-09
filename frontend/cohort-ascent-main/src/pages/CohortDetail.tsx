@@ -91,87 +91,104 @@ export const CohortDetail = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <button
-          onClick={() => navigate('/cohorts')}
-          className="mb-4 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Cohorts
-        </button>
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 lg:p-12 shadow-2xl">
+          <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/20 blur-[100px]" />
+          <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-secondary/20 blur-[100px]" />
 
-        <GlassCard variant="feature" className="p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-neon-blue/20">
-                <GraduationCap className="h-8 w-8 text-primary" />
+          <div className="relative z-10">
+            <button
+              onClick={() => navigate('/cohorts')}
+              className="mb-8 flex items-center gap-2 text-sm font-bold text-slate-400 transition-colors hover:text-white group"
+            >
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Back to Cohorts
+            </button>
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-6">
+                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
+                  <GraduationCap className="h-10 w-10 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white">
+                      {cohort.code}
+                    </h1>
+                    <span className="px-3 py-1 rounded-full bg-primary/20 text-[10px] font-black text-primary border border-primary/20 uppercase tracking-[0.2em]">
+                      Active Stream
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-slate-400">
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary/60" />
+                      {cohort.trainingLocation}
+                    </span>
+                    <span className="h-1 w-1 rounded-full bg-slate-600" />
+                    <span>{cohort.skill}</span>
+                    <span className="h-1 w-1 rounded-full bg-slate-600" />
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-secondary/60" />
+                      {candidates.filter((c: any) => c.status === 'ACTIVE' || c.status === 'COMPLETED').length} Nodes Connected
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-medium text-muted-foreground">{cohort.code}</span>
-                <h1 className="text-2xl font-bold text-foreground">{cohort.code}</h1>
-                <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {cohort.trainingLocation}
-                  </span>
-                  <span>•</span>
-                  <span>{cohort.skill}</span>
-                  <span>•</span>
-                  <span>{candidates.filter((c: any) => c.status === 'ACTIVE' || c.status === 'COMPLETED').length} candidates</span>
+
+              <div className="flex items-center gap-6 bg-white/5 backdrop-blur-md p-6 rounded-[2rem] border border-white/10">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Mission Progression</p>
+                  <p className="text-3xl font-black text-white">
+                    {(() => {
+                      const now = new Date();
+                      const start = new Date(cohort.startDate);
+                      const end = new Date(cohort.endDate);
+                      const totalDuration = end.getTime() - start.getTime();
+                      const elapsed = now.getTime() - start.getTime();
+                      const progress = totalDuration > 0 ? Math.max(0, Math.min(100, (elapsed / totalDuration) * 100)) : 0;
+                      return Math.round(progress);
+                    })()}%
+                  </p>
+                </div>
+                <div className="relative h-16 w-16">
+                  <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 36 36">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="16"
+                      fill="none"
+                      className="stroke-white/10"
+                      strokeWidth="3"
+                    />
+                    <motion.circle
+                      cx="18"
+                      cy="18"
+                      r="16"
+                      fill="none"
+                      className="stroke-primary"
+                      strokeWidth="3"
+                      strokeDasharray="100 100"
+                      initial={{ strokeDashoffset: 100 }}
+                      animate={{
+                        strokeDashoffset: 100 - (() => {
+                          const now = new Date();
+                          const start = new Date(cohort.startDate);
+                          const end = new Date(cohort.endDate);
+                          const totalDuration = end.getTime() - start.getTime();
+                          const elapsed = now.getTime() - start.getTime();
+                          const progress = totalDuration > 0 ? Math.max(0, Math.min(100, (elapsed / totalDuration) * 100)) : 0;
+                          return Math.round(progress);
+                        })()
+                      }}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary shadow-glow-cyan animate-pulse" />
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Progress</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {(() => {
-                    const now = new Date();
-                    const start = new Date(cohort.startDate);
-                    const end = new Date(cohort.endDate);
-                    const totalDuration = end.getTime() - start.getTime();
-                    const elapsed = now.getTime() - start.getTime();
-                    const progress = totalDuration > 0 ? Math.max(0, Math.min(100, (elapsed / totalDuration) * 100)) : 0;
-                    return Math.round(progress);
-                  })()}%
-                </p>
-              </div>
-              <div className="h-16 w-16">
-                <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="16"
-                    fill="none"
-                    className="stroke-muted"
-                    strokeWidth="2"
-                  />
-                  <motion.circle
-                    cx="18"
-                    cy="18"
-                    r="16"
-                    fill="none"
-                    className="stroke-primary"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeDasharray={100}
-                    initial={{ strokeDashoffset: 100 }}
-                    animate={{
-                      strokeDashoffset: 100 - (() => {
-                        const now = new Date();
-                        const start = new Date(cohort.startDate);
-                        const end = new Date(cohort.endDate);
-                        const totalDuration = end.getTime() - start.getTime();
-                        const elapsed = now.getTime() - start.getTime();
-                        return totalDuration > 0 ? Math.max(0, Math.min(100, (elapsed / totalDuration) * 100)) : 0;
-                      })()
-                    }}
-                    transition={{ duration: 1, delay: 0.5 }}
-                  />
-                </svg>
-              </div>
-            </div>
           </div>
-        </GlassCard>
+        </section>
       </motion.div>
 
       {/* Tabs */}

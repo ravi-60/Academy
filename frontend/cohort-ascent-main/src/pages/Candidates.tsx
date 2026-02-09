@@ -221,7 +221,7 @@ export const Candidates = () => {
               <Activity className="h-3 w-3" />
               Talent Matrix • Global Sourcing
             </motion.div>
-            <h1 className="text-5xl lg:text-7xl font-black tracking-tighter text-white">
+            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white">
               GenC <span className="text-gradient">Personnel</span>
             </h1>
             <p className="max-w-xl text-lg text-slate-400 font-medium leading-relaxed">
@@ -267,7 +267,7 @@ export const Candidates = () => {
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{stat.label}</p>
-                <p className="text-2xl font-black text-foreground">{stat.value}</p>
+                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
               </div>
             </div>
           </GlassCard>

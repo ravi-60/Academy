@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Table(name = "users")
 public class User {
 
@@ -59,6 +59,10 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Lob
+    @Column(columnDefinition = "LONGTEXT")
+    private String avatar;
+
     public enum Role {
         COACH, LOCATION_LEAD, ADMIN
     }
@@ -72,7 +76,8 @@ public class User {
     }
 
     // Constructors
-    public User() {}
+    public User() {
+    }
 
     public User(String empId, String name, String email, String password, Role role, EmployeeType employeeType) {
         this.empId = empId;
@@ -86,48 +91,131 @@ public class User {
     }
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getEmpId() { return empId; }
-    public void setEmpId(String empId) { this.empId = empId; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getEmpId() {
+        return empId;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setEmpId(String empId) {
+        this.empId = empId;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getName() {
+        return name;
+    }
 
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public EmployeeType getEmployeeType() { return employeeType; }
-    public void setEmployeeType(EmployeeType employeeType) { this.employeeType = employeeType; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getSkill() { return skill; }
-    public void setSkill(String skill) { this.skill = skill; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public String getPassword() {
+        return password;
+    }
 
-    public Integer getAssignedCohorts() { return assignedCohorts; }
-    public void setAssignedCohorts(Integer assignedCohorts) { this.assignedCohorts = assignedCohorts; }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-    public Status getStatus() { return status; }
-    public void setStatus(Status status) { this.status = status; }
+    public Role getRole() {
+        return role;
+    }
 
-    public LocalDate getTrainingStartDate() { return trainingStartDate; }
-    public void setTrainingStartDate(LocalDate trainingStartDate) { this.trainingStartDate = trainingStartDate; }
+    public void setRole(Role role) {
+        this.role = role;
+    }
 
-    public LocalDate getTrainingEndDate() { return trainingEndDate; }
-    public void setTrainingEndDate(LocalDate trainingEndDate) { this.trainingEndDate = trainingEndDate; }
+    public EmployeeType getEmployeeType() {
+        return employeeType;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setEmployeeType(EmployeeType employeeType) {
+        this.employeeType = employeeType;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getSkill() {
+        return skill;
+    }
+
+    public void setSkill(String skill) {
+        this.skill = skill;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public Integer getAssignedCohorts() {
+        return assignedCohorts;
+    }
+
+    public void setAssignedCohorts(Integer assignedCohorts) {
+        this.assignedCohorts = assignedCohorts;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public LocalDate getTrainingStartDate() {
+        return trainingStartDate;
+    }
+
+    public void setTrainingStartDate(LocalDate trainingStartDate) {
+        this.trainingStartDate = trainingStartDate;
+    }
+
+    public LocalDate getTrainingEndDate() {
+        return trainingEndDate;
+    }
+
+    public void setTrainingEndDate(LocalDate trainingEndDate) {
+        this.trainingEndDate = trainingEndDate;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
 }

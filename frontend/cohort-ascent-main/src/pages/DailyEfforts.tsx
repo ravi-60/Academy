@@ -344,7 +344,7 @@ export const DailyEfforts = () => {
                 <Activity className="h-3 w-3" />
                 Effort Matrix • Real-time Sync
               </motion.div>
-              <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+              <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white">
                 Log <span className="text-gradient">Efforts</span>
               </h1>
               <p className="max-w-xl text-base text-slate-400 font-medium leading-relaxed">
@@ -429,7 +429,7 @@ export const DailyEfforts = () => {
 
                   <div className="mb-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80 mb-2">{cohort.skill}</p>
-                    <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors tracking-tight">{cohort.code}</h3>
+                    <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors tracking-tight">{cohort.code}</h3>
                   </div>
 
                   <div className="space-y-6 flex-1">
@@ -985,7 +985,7 @@ export const DailyEfforts = () => {
                         <Send className="h-10 w-10 text-primary" />
                       </div>
                       <div className="space-y-3">
-                        <h3 className="text-4xl font-black text-foreground tracking-tight">Ready to Finalize Week {selectedWeek?.weekNumber}?</h3>
+                        <h3 className="text-4xl font-extrabold text-white tracking-tight">Ready to Finalize Week {selectedWeek?.weekNumber}?</h3>
                         <p className="text-muted-foreground font-medium text-lg leading-relaxed">
                           Submitting will lock the current week's records for mandatory training compliance and auditor review.
                         </p>

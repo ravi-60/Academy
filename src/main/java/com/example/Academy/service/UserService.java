@@ -159,11 +159,12 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public User updateProfile(Long userId, String name, String location) {
+    public User updateProfile(Long userId, String name, String location, String avatar) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setName(name);
         user.setLocation(location);
+        user.setAvatar(avatar);
         user.setUpdatedAt(java.time.LocalDateTime.now());
         return userRepository.save(user);
     }

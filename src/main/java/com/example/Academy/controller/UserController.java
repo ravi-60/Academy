@@ -83,7 +83,8 @@ public class UserController {
                 User user = userService.getUserByEmail(email)
                                 .orElseThrow(() -> new RuntimeException("User not found"));
                 return ResponseEntity
-                                .ok(userService.updateProfile(user.getId(), request.getName(), request.getLocation()));
+                                .ok(userService.updateProfile(user.getId(), request.getName(), request.getLocation(),
+                                                request.getAvatar()));
         }
 
         @PutMapping("/password")

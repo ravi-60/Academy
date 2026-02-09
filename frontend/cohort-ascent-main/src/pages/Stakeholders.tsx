@@ -153,7 +153,7 @@ export const Stakeholders = () => {
               <UserCheck className="h-3 w-3" />
               Resource Deployment • Stakeholders
             </motion.div>
-            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tighter text-white leading-tight">
               Elite <span className="text-gradient">Taskforce</span>
             </h1>
             <p className="max-w-xl text-base text-slate-400 font-medium leading-relaxed">
