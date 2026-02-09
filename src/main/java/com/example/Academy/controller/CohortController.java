@@ -33,6 +33,14 @@ public class CohortController {
                 cohortService.createCohort(request));
     }
 
+    @PostMapping("/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Cohort>> createCohorts(
+            @Valid @RequestBody List<CreateCohortRequest> requests) {
+        return ResponseEntity.ok(
+                cohortService.createCohorts(requests));
+    }
+
     @GetMapping
     public ResponseEntity<List<CohortResponse>> getAllCohorts(@RequestParam(required = false) String email) {
         List<Cohort> cohorts;
@@ -79,8 +87,8 @@ public class CohortController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Cohort> updateCohort(@PathVariable Long id, @RequestBody Cohort cohort) {
-        Cohort updatedCohort = cohortService.updateCohort(id, cohort);
+    public ResponseEntity<Cohort> updateCohort(@PathVariable Long id, @RequestBody CreateCohortRequest request) {
+        Cohort updatedCohort = cohortService.updateCohort(id, request);
         return ResponseEntity.ok(updatedCohort);
     }
 

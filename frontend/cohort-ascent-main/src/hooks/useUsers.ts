@@ -53,6 +53,26 @@ export const useCreateUser = () => {
   });
 };
 
+export const useCreateUsers = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (usersData: any[]) => {
+      const response = await userApi.createUsers(usersData);
+      return response.data;
+    },
+    onSuccess: (data: any[]) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['coaches'] });
+      toast.success(`${data.length} users created successfully`);
+    },
+    onError: (error) => {
+      console.error('Failed to create users:', error);
+      toast.error('Failed to create users');
+    },
+  });
+};
+
 export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 

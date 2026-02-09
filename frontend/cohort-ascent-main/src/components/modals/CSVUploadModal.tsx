@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Upload, X, FileSpreadsheet, AlertCircle, Check } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   Dialog,
   DialogContent,
@@ -39,41 +40,53 @@ export const CSVUploadModal = ({
     }
   }, [initialFile, isOpen]);
 
-  const parseCSV = (text: string): Record<string, string>[] => {
-    const lines = text.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-    const data: Record<string, string>[] = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      const row: Record<string, string> = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] || '';
-      });
-      data.push(row);
-    }
-
-    return data;
-  };
+  const normalizeHeader = (h: string) =>
+    h.trim().toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
 
   const handleFile = async (selectedFile: File) => {
     setError(null);
     setIsProcessing(true);
 
     try {
-      const text = await selectedFile.text();
-      const data = parseCSV(text);
+      const isExcel = selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls');
+
+      let data: Record<string, any>[] = [];
+
+      if (isExcel) {
+        const buffer = await selectedFile.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        data = XLSX.utils.sheet_to_json(worksheet);
+      } else {
+        const text = await selectedFile.text();
+        const workbook = XLSX.read(text, { type: 'string' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        data = XLSX.utils.sheet_to_json(worksheet);
+      }
 
       if (data.length === 0) {
         setError('No data found in the file');
         return;
       }
 
-      const headers = Object.keys(data[0]);
-      const missingColumns = requiredColumns.filter(
-        col => !headers.includes(col.toLowerCase().replace(/\s+/g, '_'))
+      // Normalize headers for processing
+      const normalizedData = data.map(row => {
+        const newRow: Record<string, string> = {};
+        Object.keys(row).forEach(key => {
+          newRow[normalizeHeader(key)] = String(row[key]);
+        });
+        return newRow;
+      });
+
+      const firstRowKeys = Object.keys(normalizedData[0]);
+      const normalizedRequired = requiredColumns.map(normalizeHeader);
+
+      const missingColumns = requiredColumns.filter((col, idx) =>
+        !firstRowKeys.includes(normalizedRequired[idx])
       );
 
       if (missingColumns.length > 0) {
@@ -82,9 +95,10 @@ export const CSVUploadModal = ({
       }
 
       setFile(selectedFile);
-      setParsedData(data);
+      setParsedData(normalizedData);
     } catch (err) {
-      setError('Failed to parse file. Please ensure it is a valid CSV.');
+      console.error('Parsing error:', err);
+      setError('Failed to parse file. Please ensure it is a valid CSV or Excel file.');
     } finally {
       setIsProcessing(false);
     }

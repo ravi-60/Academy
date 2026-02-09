@@ -17,4 +17,6 @@ public interface CohortRepository extends JpaRepository<Cohort, Long> {
     boolean existsByCode(String code);
 
     List<Cohort> findByCoach(User coach);
+
+    int countByCoach(User coach);
 }

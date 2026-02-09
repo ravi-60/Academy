@@ -45,7 +45,13 @@ export interface CreateCohortRequest {
   endDate?: string | null;
   activeGencCount: number;
   coachId?: number | null;
-  primaryTrainerId?: string | null;
+  coachEmail?: string | null;
+  primaryTrainerId?: number | null;
+  primaryTrainerEmail?: string | null;
+  primaryMentorId?: number | null;
+  primaryMentorEmail?: string | null;
+  buddyMentorId?: number | null;
+  buddyMentorEmail?: string | null;
 }
 
 
@@ -53,6 +59,7 @@ export const cohortApi = {
   getAllCohorts: (email?: string) => api.get('/cohorts', { params: { email } }),
   getCohortById: (id: number) => api.get(`/cohorts/${id}`),
   createCohort: (cohort: CreateCohortRequest) => api.post('/cohorts', cohort),
+  createCohorts: (cohorts: CreateCohortRequest[]) => api.post('/cohorts/bulk', cohorts),
   updateCohort: (id: number, cohort: Partial<Cohort>) => api.put(`/cohorts/${id}`, cohort),
   deleteCohort: (id: number) => api.delete(`/cohorts/${id}`),
   getAdditionalTrainers: (cohortId: number) => api.get(`/cohorts/${cohortId}/trainers/additional`),

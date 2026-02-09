@@ -9,6 +9,11 @@ import {
   Edit2,
   Trash2,
   ChevronDown,
+  Activity,
+  Zap,
+  Box,
+  Target,
+  ChevronRight,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -181,50 +186,100 @@ export const Candidates = () => {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Candidates</h1>
-          <p className="mt-2 text-muted-foreground">
-            Manage GenC candidates across your cohorts
-          </p>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-10 pb-10"
+    >
+      {/* Premium Hero Section */}
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 lg:p-12 shadow-2xl">
+        <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/20 blur-[100px]" />
+        <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-secondary/20 blur-[100px]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          <div className="space-y-4">
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary backdrop-blur-md border border-white/10"
+            >
+              <Activity className="h-3 w-3" />
+              Talent Matrix • Global Sourcing
+            </motion.div>
+            <h1 className="text-5xl lg:text-7xl font-black tracking-tighter text-white">
+              GenC <span className="text-gradient">Personnel</span>
+            </h1>
+            <p className="max-w-xl text-lg text-slate-400 font-medium leading-relaxed">
+              Orchestrate the high-potential talent pool. Synchronize associates across mission-critical learning streams with precision.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-4">
+            <GradientButton
+              variant="outline"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+              icon={<Download className="h-5 w-5" />}
+              onClick={handleExport}
+            >
+              Export
+            </GradientButton>
+            <GradientButton
+              variant="primary"
+              icon={<Plus className="h-5 w-5" />}
+              onClick={() => {
+                setEditingCandidate(null);
+                setShowAddCandidate(true);
+              }}
+            >
+              Add Personnel
+            </GradientButton>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <GradientButton
-            variant="outline"
-            icon={<Download className="h-4 w-4" />}
-            onClick={handleExport}
-          >
-            Export
-          </GradientButton>
-          <GradientButton
-            variant="primary"
-            icon={<Plus className="h-4 w-4" />}
-            onClick={() => {
-              setEditingCandidate(null);
-              setShowAddCandidate(true);
-            }}
-          >
-            Add Candidate
-          </GradientButton>
-        </div>
+      </section>
+
+      {/* Metrics Overlays */}
+      <motion.div variants={itemVariants} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Total Pool', value: candidates.length, icon: Users, color: 'cyan' },
+          { label: 'Active Node', value: candidates.filter(c => c.status === 'ACTIVE').length, icon: Activity, color: 'success' },
+          { label: 'Completed', value: candidates.filter(c => c.status === 'COMPLETED').length, icon: Zap, color: 'violet' },
+          { label: 'Archived', value: candidates.filter(c => c.status === 'INACTIVE').length, icon: Box, color: 'muted' },
+        ].map((stat, i) => (
+          <GlassCard key={i} variant="hover" glow={stat.color as any} className="p-6 border-border/10">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl bg-${stat.color === 'muted' ? 'muted' : stat.color === 'success' ? 'green-500' : stat.color}/10 text-${stat.color === 'muted' ? 'muted-foreground' : stat.color === 'success' ? 'green-500' : stat.color}`}>
+                <stat.icon className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">{stat.label}</p>
+                <p className="text-2xl font-black text-foreground">{stat.value}</p>
+              </div>
+            </div>
+          </GlassCard>
+        ))}
       </motion.div>
 
-      {/* Upload Zone */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      {/* Data Ingestion Zone */}
+      <motion.div variants={itemVariants}>
         <GlassCard
-          variant={isDragOver ? 'elevated' : 'default'}
-          className={`border-2 border-dashed p-8 text-center transition-all ${isDragOver ? 'border-primary bg-primary/5' : 'border-border/50'
+          variant={isDragOver ? 'elevated' : 'hover'}
+          glow="cyan"
+          className={`relative overflow-hidden border-2 border-dashed p-10 text-center transition-all group ${isDragOver ? 'border-primary bg-primary/5' : 'border-border/40'
             }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -233,12 +288,13 @@ export const Candidates = () => {
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleFileDrop}
         >
-          <Upload className={`mx-auto h-10 w-10 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">
-            Drag & Drop to Upload
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Upload className={`mx-auto h-12 w-12 ${isDragOver ? 'text-primary' : 'text-muted-foreground/40'} group-hover:scale-110 group-hover:text-primary transition-all`} />
+          <h3 className="mt-4 text-xl font-bold text-foreground">
+            Multi-Node Data Ingestion
           </h3>
-          <p className="mt-2 text-muted-foreground">
-            Upload CSV or Excel file with candidate data
+          <p className="mt-2 text-muted-foreground max-w-sm mx-auto">
+            Drop your CSV or Excel manifest here to batch-load associate telemetry into the global matrix.
           </p>
           <input
             ref={fileInputRef}
@@ -256,67 +312,68 @@ export const Candidates = () => {
           <GradientButton
             variant="outline"
             size="sm"
-            className="mt-4"
+            className="mt-6 font-bold"
             onClick={() => fileInputRef.current?.click()}
           >
-            Browse Files
+            Open File Buffer
           </GradientButton>
         </GlassCard>
       </motion.div>
 
-      {/* Filters */}
+      {/* Intelligence Filters */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-col gap-4 sm:flex-row"
+        variants={itemVariants}
+        className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between pt-6 border-t border-border/10"
       >
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, ID, or email..."
-            className="input-premium w-full pl-12"
-          />
+        <div className="relative group flex-1 max-w-xl">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-all" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Query Personnel Registry (Name, ID, Email)..."
+              className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
+            />
+          </div>
         </div>
-        <div className="flex gap-3">
-          <div className="relative">
+
+        <div className="flex flex-wrap gap-4">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-premium appearance-none pr-10"
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="completed">Completed</option>
+              <option value="all">Global Lifecycle</option>
+              <option value="active">Operational</option>
+              <option value="inactive">Suspended</option>
+              <option value="completed">Qualified</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
-          <div className="relative">
+
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
             <select
               value={cohortFilter}
               onChange={(e) => setCohortFilter(e.target.value)}
-              className="input-premium appearance-none pr-10"
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
             >
-              <option value="all">All Cohorts</option>
+              <option value="all">Synchronize Cohort</option>
               {cohorts.map((cohort) => (
                 <option key={cohort.id} value={cohort.id}>{cohort.code}</option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </div>
       </motion.div>
 
-      {/* Candidates Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      {/* Personnel Manifest */}
+      <motion.div variants={itemVariants}>
         {isLoading ? (
           <GlassCard className="p-12 text-center">
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -449,6 +506,6 @@ export const Candidates = () => {
         requiredColumns={['name', 'associate_id', 'cohort_code']}
         initialFile={pendingFile}
       />
-    </div>
+    </motion.div>
   );
 };

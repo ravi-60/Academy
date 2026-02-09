@@ -41,11 +41,32 @@ export const useCreateCohort = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Cohort created successfully');
     },
     onError: (error) => {
       console.error('Failed to create cohort:', error);
       toast.error('Failed to create cohort');
+    },
+  });
+};
+
+export const useCreateCohorts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (cohortsData: CreateCohortRequest[]) => {
+      const response = await cohortApi.createCohorts(cohortsData);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(`${data.length} cohorts created successfully`);
+    },
+    onError: (error) => {
+      console.error('Failed to create cohorts:', error);
+      toast.error('Failed to create cohorts');
     },
   });
 };
@@ -60,6 +81,7 @@ export const useUpdateCohort = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Cohort updated successfully');
     },
     onError: (error) => {
@@ -78,6 +100,7 @@ export const useDeleteCohort = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cohorts'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Cohort deleted successfully');
     },
     onError: (error) => {

@@ -9,6 +9,7 @@ export interface User {
   employeeType: 'INTERNAL' | 'EXTERNAL';
   location?: string;
   assignedCohorts?: number;
+  skill?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   trainingStartDate?: string;
   trainingEndDate?: string;
@@ -20,7 +21,8 @@ export const userApi = {
   getAllUsers: () => api.get('/users'),
   getCoaches: () => api.get('/users/coaches'),
   createUser: (userData: any) => api.post('/users', userData),
+  createUsers: (usersData: any[]) => api.post('/users/bulk', usersData),
   updateUser: (id: number, data: any) => {
-  return api.put(`/users/${id}`, data);
-},
+    return api.put(`/users/${id}`, data);
+  },
 };

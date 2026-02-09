@@ -10,15 +10,23 @@ import {
   Calendar,
   ArrowUpRight,
   ChevronDown,
+  Upload,
+  User,
+  Activity,
+  Box,
+  Target,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { useCohortStore, Cohort } from '@/stores/cohortStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useCohorts, useCreateCohort, useDeleteCohort } from '@/hooks/useCohortsBackend';
+import { useCohorts, useCreateCohort, useDeleteCohort, useCreateCohorts, useUpdateCohort } from '@/hooks/useCohortsBackend';
 import { useActiveCoaches } from '@/hooks/useCoachesBackend';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { AddCohortModal } from '@/components/modals/AddCohortModal';
+import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
 import { toast } from 'sonner';
 
 const statusConfig = {
@@ -32,13 +40,19 @@ export const Cohorts = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [showAddCohort, setShowAddCohort] = useState(false);
-  const { cohorts: mockCohorts } = useCohortStore();
-  const { data: dbCohorts = [] } = useCohorts();
-  const createCohort = useCreateCohort();
-  const deleteCohort = useDeleteCohort();
+  const [showCSVUpload, setShowCSVUpload] = useState(false);
+  const [selectedCohort, setSelectedCohort] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  const { data: dbCohorts = [] } = useCohorts();
+  const createCohort = useCreateCohort();
+  const createCohorts = useCreateCohorts();
+  const updateCohort = useUpdateCohort();
+  const deleteCohort = useDeleteCohort();
+
+  const { cohorts: mockCohorts } = useCohortStore();
   const isAdmin = user?.role === 'ADMIN';
 
   // Use DB cohorts if available, otherwise mock
@@ -62,7 +76,7 @@ export const Cohorts = () => {
     }))
     : mockCohorts;
 
-  const locations = [...new Set(cohorts.map((c) => c.location))];
+  const locations = [...new Set((cohorts || []).map((c: any) => c.location))];
 
   const {
     data: activeCoaches = [],
@@ -87,26 +101,62 @@ export const Cohorts = () => {
 
   const handleCreateCohort = (data: any) => {
     console.log('Submitting cohort:', data);
-    createCohort.mutate({
-      code: data.code,
-      bu: data.bu,
-      skill: data.skill,
-      activeGencCount: 0,
-      trainingLocation: data.trainingLocation,
-      startDate: data.startDate,
-      endDate: data.endDate || null,
-      coachId: data.coachId,
-      primaryTrainerId: null,
-    }, {
+
+    if (isEditing && selectedCohort) {
+      updateCohort.mutate({
+        id: selectedCohort.id,
+        data: data
+      }, {
+        onSuccess: () => {
+          setShowAddCohort(false);
+          setSelectedCohort(null);
+          setIsEditing(false);
+        },
+      });
+    } else {
+      createCohort.mutate({
+        code: data.code,
+        bu: data.bu,
+        skill: data.skill,
+        activeGencCount: 0,
+        trainingLocation: data.trainingLocation,
+        startDate: data.startDate,
+        endDate: data.endDate || null,
+        coachId: data.coachId,
+        primaryTrainerId: null,
+      }, {
+        onSuccess: () => {
+          setShowAddCohort(false);
+        },
+      });
+    }
+  };
+
+  const handleBulkUpload = (data: Record<string, string>[]) => {
+    const cohortsToCreate = data.map((row) => ({
+      code: row.cohort_code || row.code,
+      name: row.cohort_name || row.name,
+      bu: row.business_unit || row.bu,
+      skill: row.skill_technology || row.skill,
+      activeGencCount: parseInt(row.active_genc_count || '0', 10),
+      trainingLocation: row.location || row.training_location,
+      startDate: row.start_date,
+      endDate: row.end_date || null,
+      coachEmail: row.coach_email,
+      primaryTrainerEmail: row.primary_trainer_email,
+    }));
+
+    createCohorts.mutate(cohortsToCreate, {
       onSuccess: () => {
-        setShowAddCohort(false);
-        toast.success('Cohort created successfully');
-      },
+        setShowCSVUpload(false);
+      }
     });
   };
 
   const handleEditCohort = (cohort: any) => {
-    toast.info(`Edit cohort: ${cohort.name}`);
+    setSelectedCohort(cohort);
+    setIsEditing(true);
+    setShowAddCohort(true);
   };
 
   const handleDeleteCohort = (cohort: any) => {
@@ -119,92 +169,199 @@ export const Cohorts = () => {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Cohorts</h1>
-          <p className="mt-2 text-muted-foreground">
-            {isAdmin
-              ? 'Manage all training cohorts across locations'
-              : 'Your assigned cohort programs'}
-          </p>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-10 pb-10"
+    >
+      {/* Premium Hero Section */}
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 lg:p-12 shadow-2xl">
+        <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/20 blur-[100px]" />
+        <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-secondary/20 blur-[100px]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+          <div className="space-y-4">
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary backdrop-blur-md border border-white/10"
+            >
+              <Activity className="h-3 w-3" />
+              Operational Flux • Live Streams
+            </motion.div>
+            <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+              Training <span className="text-gradient">Cohorts</span>
+            </h1>
+            <p className="max-w-xl text-base text-slate-400 font-medium leading-relaxed">
+              {isAdmin
+                ? 'Master control for high-bandwidth training missions across the global talent nodes.'
+                : 'Monitor your assigned learning trajectories and synchronize with elite cohorts.'}
+            </p>
+          </div>
+
+          {isAdmin && (
+            <div className="flex flex-wrap gap-4">
+              <GradientButton
+                variant="outline"
+                className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+                icon={<Upload className="h-5 w-5" />}
+                onClick={() => setShowCSVUpload(true)}
+              >
+                Import CSV
+              </GradientButton>
+              <GradientButton
+                variant="primary"
+                icon={<Plus className="h-5 w-5" />}
+                onClick={() => {
+                  setIsEditing(false);
+                  setSelectedCohort(null);
+                  setShowAddCohort(true);
+                }}
+              >
+                Initialize Cohort
+              </GradientButton>
+            </div>
+          )}
         </div>
-        {/* Only show New Cohort button for admins */}
-        {isAdmin && (
-          <GradientButton
-            variant="primary"
-            icon={<Plus className="h-5 w-5" />}
-            onClick={() => setShowAddCohort(true)}
-          >
-            New Cohort
-          </GradientButton>
-        )}
+      </section>
+
+      {/* Synchronized Metrics Hub */}
+      <motion.div variants={itemVariants} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <GlassCard variant="hover" glow="cyan" className="p-8 relative overflow-hidden group border-border/10">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Box className="h-16 w-16" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Total Streams</p>
+            <p className="text-3xl font-bold text-foreground">{cohorts.length}</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            <span className="text-xs font-bold text-success">Active Deployment</span>
+          </div>
+        </GlassCard>
+
+        <GlassCard variant="hover" glow="violet" className="p-8 relative overflow-hidden group border-border/10">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Users className="h-16 w-16" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Total GenCs</p>
+            <p className="text-3xl font-bold text-foreground">{cohorts.reduce((acc, c) => acc + (c.candidateCount || 0), 0)}</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <TrendingUp className="h-3 w-3 text-secondary" />
+            <span className="text-xs font-bold text-secondary">High Flux Potential</span>
+          </div>
+        </GlassCard>
+
+        <GlassCard variant="hover" glow="violet" className="p-8 relative overflow-hidden group border-border/10">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Target className="h-16 w-16" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Locations</p>
+            <p className="text-3xl font-bold text-foreground">{locations.length}</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <MapPin className="h-3 w-3 text-primary" />
+            <span className="text-xs font-bold text-primary">Global Distribution</span>
+          </div>
+        </GlassCard>
+
+        <GlassCard variant="hover" glow="cyan" className="p-8 relative overflow-hidden group border-border/10">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+            <Activity className="h-16 w-16" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">Operational</p>
+            <p className="text-3xl font-bold text-foreground">{cohorts.filter(c => c.status === 'active').length}</p>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <Zap className="h-3 w-3 text-success" />
+            <span className="text-xs font-bold text-success italic">STABLE_SYNC</span>
+          </div>
+        </GlassCard>
       </motion.div>
 
-      {/* Filters */}
+      {/* Intelligence Filtering */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col gap-4 sm:flex-row"
+        variants={itemVariants}
+        className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between pt-6 border-t border-border/10"
       >
-        <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search cohorts by name, code, or skill..."
-            className="input-premium w-full pl-12"
-          />
+        <div className="relative group flex-1 max-w-xl">
+          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/30 to-secondary/30 blur opacity-40 group-hover:opacity-70 transition-opacity" />
+          <div className="relative flex items-center">
+            <SearchIcon className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Query Mission Node (Name, Code, Skill)..."
+              className="input-premium w-full pl-12 pr-4 py-4 backdrop-blur-2xl"
+            />
+          </div>
         </div>
-        <div className="flex gap-3">
-          <div className="relative">
+
+        <div className="flex flex-wrap gap-4">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-premium appearance-none pr-10"
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="completed">Completed</option>
+              <option value="all">Global Status</option>
+              <option value="active">Operational</option>
+              <option value="upcoming">Scheduled</option>
+              <option value="completed">Archived</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
-          <div className="relative">
+
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="input-premium appearance-none pr-10"
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
             >
               <option value="all">All Locations</option>
               {locations.map((loc) => (
                 <option key={loc} value={loc}>{loc}</option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
         </div>
       </motion.div>
 
       {/* Cohorts Grid */}
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-2 xl:grid-cols-3 pt-6">
         <AnimatePresence mode="popLayout">
           {filteredCohorts.map((cohort, index) => (
             <motion.div
               key={cohort.id}
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4, delay: index * 0.04 }}
             >
               <CohortCard
                 cohort={cohort}
@@ -217,7 +374,7 @@ export const Cohorts = () => {
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {filteredCohorts.length === 0 && (
         <motion.div
@@ -245,7 +402,11 @@ export const Cohorts = () => {
       {/* Add Cohort Modal */}
       <AddCohortModal
         isOpen={showAddCohort}
-        onClose={() => setShowAddCohort(false)}
+        onClose={() => {
+          setShowAddCohort(false);
+          setSelectedCohort(null);
+          setIsEditing(false);
+        }}
         onSubmit={handleCreateCohort}
         coaches={activeCoaches
           .filter((c: any) => c.role === 'COACH')
@@ -254,10 +415,19 @@ export const Cohorts = () => {
             name: c.name,
             email: c.email,
           }))}
-
-        isLoading={createCohort.isPending || loadingCoaches}
+        isLoading={createCohort.isPending || updateCohort.isPending || loadingCoaches}
+        initialData={selectedCohort}
+        isEdit={isEditing}
       />
-    </div>
+
+      <CSVUploadModal
+        isOpen={showCSVUpload}
+        onClose={() => setShowCSVUpload(false)}
+        onUpload={handleBulkUpload}
+        title="Import Cohorts"
+        requiredColumns={['Cohort Code', 'Cohort Name', 'Business Unit', 'Skill', 'Location', 'Start Date', 'End Date']}
+      />
+    </motion.div>
   );
 };
 
@@ -277,22 +447,27 @@ const CohortCard = ({ cohort, index, onClick, onEdit, onDelete, isAdmin }: Cohor
     <GlassCard
       variant="hover"
       glow="cyan"
-      className="group cursor-pointer p-6"
+      className="group relative cursor-pointer overflow-hidden p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10"
       onClick={onClick}
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -6 }}
     >
+      {/* Decorative background element */}
+      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary/5 blur-2xl transition-all group-hover:bg-primary/10" />
+
       {/* Header */}
-      <div className="mb-4 flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-neon-blue/20 transition-all group-hover:from-primary/30 group-hover:to-neon-blue/30">
-            <GraduationCap className="h-6 w-6 text-primary" />
+      <div className="relative mb-6 flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-neon-blue/20 shadow-inner transition-all duration-300 group-hover:scale-110 group-hover:from-primary/30 group-hover:to-neon-blue/30">
+            <GraduationCap className="h-7 w-7 text-primary shadow-sm" />
           </div>
-          <div>
-            <span className="text-xs font-medium text-muted-foreground">{cohort.code}</span>
-            <h3 className="font-semibold text-foreground">{cohort.name}</h3>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">{cohort.code}</span>
+            <h3 className="truncate text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+              {cohort.name}
+            </h3>
           </div>
         </div>
-        <div className="opacity-0 transition-all group-hover:opacity-100">
+        <div className="flex items-center gap-1">
           <ActionMenu
             onEdit={isAdmin ? onEdit : undefined}
             onDelete={isAdmin ? onDelete : undefined}
@@ -304,58 +479,76 @@ const CohortCard = ({ cohort, index, onClick, onEdit, onDelete, isAdmin }: Cohor
         </div>
       </div>
 
-      {/* Info */}
-      <div className="mb-4 space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">{cohort.skill}</span>
-          <span>•</span>
-          <span>{cohort.bu}</span>
+      {/* Tags Section */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20">
+          {cohort.skill}
+        </span>
+        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          {cohort.bu}
+        </span>
+      </div>
+
+      {/* Main Info Grid */}
+      <div className="mb-6 grid grid-cols-2 gap-4">
+        <div className="flex items-center gap-2.5 text-sm text-muted-foreground/80">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
+            <MapPin className="h-4 w-4 text-primary/70" />
+          </div>
+          <span className="truncate">{cohort.location}</span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <MapPin className="h-4 w-4" />
-            {cohort.location}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="h-4 w-4" />
-            {cohort.candidateCount}
-          </span>
+        <div className="flex items-center gap-2.5 text-sm text-muted-foreground/80">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50">
+            <Users className="h-4 w-4 text-primary/70" />
+          </div>
+          <span>{cohort.candidateCount} GenCs</span>
         </div>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          Started {new Date(cohort.startDate).toLocaleDateString('en-US', {
-            month: 'short',
+      </div>
+
+      {/* Progress & Timeline */}
+      <div className="mb-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${status.class}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current pulse-subtle" />
+            {status.label}
+          </span>
+          <span className="text-sm font-bold text-foreground">{cohort.progress}%</span>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/40">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${cohort.progress}%` }}
+            transition={{ duration: 1.2, ease: "circOut" }}
+            className="absolute h-full rounded-full bg-gradient-to-r from-primary via-neon-blue to-cyan-400"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/70">
+          <Calendar className="h-3.5 w-3.5" />
+          Launched on {new Date(cohort.startDate).toLocaleDateString('en-US', {
+            month: 'long',
             day: 'numeric',
             year: 'numeric',
           })}
         </div>
       </div>
 
-      {/* Progress & Status */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className={`badge-status ${status.class}`}>{status.label}</span>
-          <span className="text-sm font-medium text-foreground">{cohort.progress}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-muted">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${cohort.progress}%` }}
-            transition={{ duration: 1, delay: 0.3 + index * 0.1 }}
-            className="h-full rounded-full bg-gradient-to-r from-primary to-neon-blue"
-          />
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-4 flex items-center justify-between border-t border-border/30 pt-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/20 text-xs font-semibold text-secondary">
-            {cohort.coachName?.charAt(0) || 'U'}
+      {/* Footer / Assigned Personnel */}
+      <div className="mt-auto flex items-center justify-between border-t border-border/20 pt-5">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-secondary/40 to-neon-purple/40 text-sm font-bold text-secondary shadow-lg">
+              {cohort.coachName?.charAt(0) || 'U'}
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
           </div>
-          <span className="text-sm text-muted-foreground">{cohort.coachName || 'Unassigned'}</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground/60">Program Coach</span>
+            <span className="text-sm font-semibold text-foreground/90">{cohort.coachName || 'Unassigned'}</span>
+          </div>
         </div>
-        <ArrowUpRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:text-primary group-hover:opacity-100" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/5 transition-all duration-300 group-hover:bg-primary/20">
+          <ArrowUpRight className="h-5 w-5 text-muted-foreground transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+        </div>
       </div>
     </GlassCard>
   );

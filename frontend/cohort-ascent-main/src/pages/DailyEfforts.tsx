@@ -22,7 +22,8 @@ import {
   Users,
   Search as SearchIcon,
   Filter,
-  Download
+  Download,
+  Activity
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -327,45 +328,62 @@ export const DailyEfforts = () => {
   // 1. Role-Based Entry Point (Cohort Selection)
   if (!selectedCohortId) {
     return (
-      <div className="max-w-7xl mx-auto py-10 px-6 space-y-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row md:items-center justify-between gap-6"
-        >
-          <div>
-            <h1 className="text-4xl font-black text-foreground flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20">
-                <Layout className="h-8 w-8 text-primary" />
+      <div className="space-y-10 pb-10">
+        {/* Premium Hero Section */}
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 lg:p-12 shadow-2xl">
+          <div className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-primary/20 blur-[100px]" />
+          <div className="absolute -left-20 -bottom-20 h-80 w-80 rounded-full bg-secondary/20 blur-[100px]" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div className="space-y-4">
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-primary backdrop-blur-md border border-white/10"
+              >
+                <Activity className="h-3 w-3" />
+                Effort Matrix • Real-time Sync
+              </motion.div>
+              <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white">
+                Log <span className="text-gradient">Efforts</span>
+              </h1>
+              <p className="max-w-xl text-base text-slate-400 font-medium leading-relaxed">
+                Synchronize your operational bandwidth. Select a mission-critical cohort to manage workforce development and resource utilization logs.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-end gap-3">
+              <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Authenticated Lead</p>
+                  <p className="text-sm font-black text-white">{user?.name}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-neon-blue flex items-center justify-center font-bold text-white shadow-lg">
+                  {user?.name?.charAt(0)}
+                </div>
               </div>
-              Log Efforts
-            </h1>
-            <p className="mt-2 text-muted-foreground font-medium">Select an assigned cohort to manage workforce development logs.</p>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-            <div className="relative w-full sm:w-80 group">
-              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        </section>
+
+        {/* Intelligence Filters */}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between pt-6">
+          <div className="relative group flex-1 max-w-xl">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
+            <div className="relative flex items-center">
+              <SearchIcon className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
               <input
                 type="text"
-                placeholder="Search cohorts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted/20 border border-border/50 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-medium text-sm"
+                placeholder="Query mission-critical node (Code, Skill, Location)..."
+                className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
               />
             </div>
-            <div className="flex items-center gap-4 bg-muted/20 p-4 rounded-2xl border border-border/50">
-              <div className="text-right">
-                <p className="text-xs font-bold uppercase text-muted-foreground">Logged in as</p>
-                <p className="text-sm font-black text-foreground">{user?.name}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-neon-blue flex items-center justify-center font-bold text-white shadow-lg">
-                {user?.name?.charAt(0)}
-              </div>
-            </div>
           </div>
-        </motion.div>
+        </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
           {allowedCohorts.map((cohort, index) => {
             const today = startOfToday();
             const start = parseISO(cohort.startDate);
@@ -397,10 +415,10 @@ export const DailyEfforts = () => {
                 <GlassCard
                   variant="hover"
                   glow={status === 'Active' ? "cyan" : "none"}
-                  className="cursor-pointer p-6 h-full flex flex-col group relative overflow-hidden ring-1 ring-white/5"
+                  className="cursor-pointer p-8 h-full flex flex-col group relative overflow-hidden border-border/10"
                   onClick={() => setSelectedCohortId(cohort.id)}
                 >
-                  <div className="absolute top-0 right-0 p-4">
+                  <div className="absolute top-0 right-0 p-6">
                     <span className={cn(
                       "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border",
                       statusColor
@@ -410,42 +428,42 @@ export const DailyEfforts = () => {
                   </div>
 
                   <div className="mb-6">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80 mb-1">{cohort.skill}</p>
-                    <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors tracking-tight">{cohort.code}</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80 mb-2">{cohort.skill}</p>
+                    <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors tracking-tight">{cohort.code}</h3>
                   </div>
 
-                  <div className="space-y-4 flex-1">
+                  <div className="space-y-6 flex-1">
                     <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground/80">
-                        <MapPin className="h-3.5 w-3.5 text-primary/60" />
+                      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground/80">
+                        <MapPin className="h-4 w-4 text-primary/60" />
                         {cohort.trainingLocation}
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                         <span className="flex items-center gap-1.5">
-                          <TrendingUp className="h-3.5 w-3.5 text-primary/60" />
-                          Progress
+                          <TrendingUp className="h-4 w-4 text-primary/60" />
+                          Progression
                         </span>
                         <span>{progress}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-muted/30 rounded-full overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${progress}%` }}
-                          className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.4)]"
+                          className="h-full bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-8 pt-6 border-t border-border/30 flex items-center justify-between">
+                  <div className="mt-8 pt-8 border-t border-border/10 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                      <span className="text-[10px] font-black uppercase text-muted-foreground uppercase">{cohort.bu}</span>
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
+                      <span className="text-[10px] font-black uppercase text-muted-foreground/80 tracking-widest">{cohort.bu} Node</span>
                     </div>
-                    <div className="flex items-center text-primary font-black text-xs uppercase tracking-widest group-hover:gap-2 transition-all">
-                      Log Efforts <ChevronRight className="h-4 w-4" />
+                    <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-[0.15em] transition-all group-hover:translate-x-1">
+                      Access Workspace <ChevronRight className="h-4 w-4" />
                     </div>
                   </div>
                 </GlassCard>
@@ -453,10 +471,10 @@ export const DailyEfforts = () => {
             );
           })}
           {allowedCohorts.length === 0 && (
-            <div className="col-span-full py-20 text-center bg-card/10 rounded-3xl border-2 border-dashed border-border/50">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-foreground">No cohorts assigned</h3>
-              <p className="text-muted-foreground">You don't have any cohorts assigned for effort logging.</p>
+            <div className="col-span-full py-32 text-center bg-card/10 rounded-[2.5rem] border-2 border-dashed border-border/30">
+              <AlertCircle className="h-16 w-16 text-muted-foreground/30 mx-auto mb-6" />
+              <h3 className="text-2xl font-black text-foreground">Mission Nodes Not Found</h3>
+              <p className="text-muted-foreground max-w-sm mx-auto font-medium mt-2">You don't have any operational cohorts assigned for effort synchronization at this time.</p>
             </div>
           )}
         </div>
@@ -623,7 +641,7 @@ export const DailyEfforts = () => {
                       <History className="h-8 w-8 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-3xl font-black text-foreground tracking-tight">Effort History</h3>
+                      <h3 className="text-2xl font-bold text-white tracking-tight">Effort History</h3>
                       <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider opacity-70">Verified audit log of compliance records</p>
                     </div>
                   </div>
@@ -684,8 +702,8 @@ export const DailyEfforts = () => {
                           <div className="flex justify-between items-start mb-8 relative z-10">
                             <div>
                               <div className="flex items-center gap-3 mb-2">
-                                <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">Entry Locked</span>
-                                <h4 className="text-2xl font-black text-foreground tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
+                                <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">Entry Locked</span>
+                                <h4 className="text-xl font-bold text-white tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
                               </div>
                               <p className="text-xs text-muted-foreground font-bold flex items-center gap-2">
                                 <Calendar className="h-3.5 w-3.5 text-primary/60" />

@@ -70,18 +70,63 @@ public class CohortService {
         // SET COACH
         if (request.getCoachId() != null) {
             User coach = userRepository.findById(request.getCoachId())
-                    .orElseThrow(() -> new RuntimeException("Coach not found"));
+                    .orElseThrow(() -> new RuntimeException("Coach not found with ID: " + request.getCoachId()));
+            cohort.setCoach(coach);
+        } else if (request.getCoachEmail() != null && !request.getCoachEmail().isEmpty()) {
+            User coach = userRepository.findByEmail(request.getCoachEmail())
+                    .orElseThrow(() -> new RuntimeException("Coach not found with email: " + request.getCoachEmail()));
+            if (coach.getRole() != User.Role.COACH) {
+                // Ideally fail, but maybe lenient? No, strict.
+                throw new RuntimeException("User " + request.getCoachEmail() + " is not a COACH");
+            }
             cohort.setCoach(coach);
         }
 
         // SET PRIMARY TRAINER
         if (request.getPrimaryTrainerId() != null) {
             User trainer = userRepository.findById(request.getPrimaryTrainerId())
-                    .orElseThrow(() -> new RuntimeException("Trainer not found"));
+                    .orElseThrow(
+                            () -> new RuntimeException("Trainer not found with ID: " + request.getPrimaryTrainerId()));
+            cohort.setPrimaryTrainer(trainer);
+        } else if (request.getPrimaryTrainerEmail() != null && !request.getPrimaryTrainerEmail().isEmpty()) {
+            User trainer = userRepository.findByEmail(request.getPrimaryTrainerEmail())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Trainer not found with email: " + request.getPrimaryTrainerEmail()));
             cohort.setPrimaryTrainer(trainer);
         }
 
+        // SET PRIMARY MENTOR
+        if (request.getPrimaryMentorId() != null) {
+            User mentor = userRepository.findById(request.getPrimaryMentorId())
+                    .orElseThrow(
+                            () -> new RuntimeException("Mentor not found with ID: " + request.getPrimaryMentorId()));
+            cohort.setPrimaryMentor(mentor);
+        } else if (request.getPrimaryMentorEmail() != null && !request.getPrimaryMentorEmail().isEmpty()) {
+            User mentor = userRepository.findByEmail(request.getPrimaryMentorEmail())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Mentor not found with email: " + request.getPrimaryMentorEmail()));
+            cohort.setPrimaryMentor(mentor);
+        }
+
+        // SET BUDDY MENTOR
+        if (request.getBuddyMentorId() != null) {
+            User buddy = userRepository.findById(request.getBuddyMentorId())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Buddy Mentor not found with ID: " + request.getBuddyMentorId()));
+            cohort.setBuddyMentor(buddy);
+        } else if (request.getBuddyMentorEmail() != null && !request.getBuddyMentorEmail().isEmpty()) {
+            User buddy = userRepository.findByEmail(request.getBuddyMentorEmail())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Buddy Mentor not found with email: " + request.getBuddyMentorEmail()));
+            cohort.setBuddyMentor(buddy);
+        }
+
         Cohort savedCohort = cohortRepository.save(cohort);
+
+        // SYNC COACH COUNT
+        if (savedCohort.getCoach() != null) {
+            updateCoachCohortCount(savedCohort.getCoach());
+        }
 
         // LOG ACTIVITY: Coach Assigned
         if (savedCohort.getCoach() != null) {
@@ -113,6 +158,12 @@ public class CohortService {
         return savedCohort;
     }
 
+    public List<Cohort> createCohorts(List<CreateCohortRequest> requests) {
+        return requests.stream()
+                .map(this::createCohort)
+                .toList();
+    }
+
     public List<Cohort> getAllCohorts() {
         return cohortRepository.findAll();
     }
@@ -142,23 +193,66 @@ public class CohortService {
         return cohortRepository.findByCode(code);
     }
 
-    public Cohort updateCohort(Long id, Cohort cohortDetails) {
+    public Cohort updateCohort(Long id, CreateCohortRequest request) {
         Cohort cohort = cohortRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cohort not found"));
 
-        cohort.setCode(cohortDetails.getCode());
-        cohort.setBu(cohortDetails.getBu());
-        cohort.setSkill(cohortDetails.getSkill());
-        cohort.setActiveGencCount(cohortDetails.getActiveGencCount());
-        cohort.setTrainingLocation(cohortDetails.getTrainingLocation());
-        cohort.setStartDate(cohortDetails.getStartDate());
-        cohort.setEndDate(cohortDetails.getEndDate());
+        User oldCoach = cohort.getCoach();
 
-        return cohortRepository.save(cohort);
+        cohort.setCode(request.getCode());
+        cohort.setBu(request.getBu());
+        cohort.setSkill(request.getSkill());
+        cohort.setActiveGencCount(request.getActiveGencCount() != null ? request.getActiveGencCount() : 0);
+        cohort.setTrainingLocation(request.getTrainingLocation());
+
+        if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
+            cohort.setStartDate(LocalDate.parse(request.getStartDate()));
+        }
+        if (request.getEndDate() != null && !request.getEndDate().isEmpty()) {
+            cohort.setEndDate(LocalDate.parse(request.getEndDate()));
+        }
+
+        // Update Coach
+        User newCoach = null;
+        if (request.getCoachId() != null) {
+            newCoach = userRepository.findById(request.getCoachId())
+                    .orElseThrow(() -> new RuntimeException("Coach not found with ID: " + request.getCoachId()));
+            cohort.setCoach(newCoach);
+        } else if (request.getCoachEmail() != null && !request.getCoachEmail().isEmpty()) {
+            newCoach = userRepository.findByEmail(request.getCoachEmail())
+                    .orElseThrow(() -> new RuntimeException("Coach not found with email: " + request.getCoachEmail()));
+            cohort.setCoach(newCoach);
+        }
+
+        Cohort updated = cohortRepository.save(cohort);
+
+        // SYNC COUNTS
+        if (oldCoach != null)
+            updateCoachCohortCount(oldCoach);
+        if (newCoach != null && (oldCoach == null || !oldCoach.getId().equals(newCoach.getId()))) {
+            updateCoachCohortCount(newCoach);
+        }
+
+        return updated;
     }
 
     public void deleteCohort(Long id) {
+        Cohort cohort = cohortRepository.findById(id).orElse(null);
+        User coach = (cohort != null) ? cohort.getCoach() : null;
+
         cohortRepository.deleteById(id);
+
+        if (coach != null) {
+            updateCoachCohortCount(coach);
+        }
+    }
+
+    private void updateCoachCohortCount(User coach) {
+        if (coach == null)
+            return;
+        int count = cohortRepository.countByCoach(coach);
+        coach.setAssignedCohorts(count);
+        userRepository.save(coach);
     }
 
     public CohortResponse mapToResponse(Cohort c) {
@@ -285,8 +379,10 @@ public class CohortService {
 
     // Fix for data synchronization
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
-    public void recalculateAcceptedCounts() {
-        System.out.println("DEBUG: Recalculating candidate counts...");
+    public void recalculateSystemState() {
+        System.out.println("DEBUG: Synchronizing system counts and state...");
+
+        // 1. Recalculate Candidate Counts for Cohorts
         List<Cohort> cohorts = cohortRepository.findAll();
         for (Cohort cohort : cohorts) {
             long activeCount = candidateRepository.countByCohortIdAndStatus(cohort.getId(), Candidate.Status.ACTIVE);
@@ -309,6 +405,20 @@ public class CohortService {
 
             if (changed) {
                 cohortRepository.save(cohort);
+            }
+        }
+
+        // 2. Recalculate Assigned Cohorts for Personnel (Coaches/Admins)
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            if (user.getRole() == User.Role.COACH || user.getRole() == User.Role.ADMIN) {
+                int assignedCount = cohortRepository.countByCoach(user);
+                if (user.getAssignedCohorts() == null || user.getAssignedCohorts() != assignedCount) {
+                    System.out.println("Syncing assigned cohorts for " + user.getName() + ": "
+                            + user.getAssignedCohorts() + " -> " + assignedCount);
+                    user.setAssignedCohorts(assignedCount);
+                    userRepository.save(user);
+                }
             }
         }
     }

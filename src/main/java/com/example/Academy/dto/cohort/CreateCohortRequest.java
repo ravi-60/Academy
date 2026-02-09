@@ -25,8 +25,16 @@ public class CreateCohortRequest {
     private String endDate;
     private Integer activeGencCount;
 
+    // For Bulk Upload (CSV) where IDs are unknown
+    private String coachEmail;
+    private String primaryTrainerEmail;
+    private String primaryMentorEmail;
+    private String buddyMentorEmail;
+
     // THIS IS KEY
     private Long coachId;
     private Long primaryTrainerId;
+    private Long primaryMentorId;
+    private Long buddyMentorId;
 
 }

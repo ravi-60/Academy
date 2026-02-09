@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import {
   Dialog,
@@ -42,9 +42,11 @@ interface Coach {
 interface AddCohortModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CohortFormData) => void;
+  onSubmit: (data: any) => void;
   coaches: Coach[];
   isLoading?: boolean;
+  initialData?: any;
+  isEdit?: boolean;
 }
 
 export const AddCohortModal = ({
@@ -53,7 +55,8 @@ export const AddCohortModal = ({
   onSubmit,
   coaches,
   isLoading,
-
+  initialData,
+  isEdit,
 }: AddCohortModalProps) => {
   const form = useForm<CohortFormData>({
     resolver: zodResolver(cohortSchema),
@@ -72,6 +75,35 @@ export const AddCohortModal = ({
   const [buValue, setBuValue] = useState('');
   const [customBU, setCustomBU] = useState('');
 
+  // Update form when initialData changes
+  useEffect(() => {
+    if (initialData && isEdit) {
+      form.reset({
+        code: initialData.code || '',
+        name: initialData.name || '',
+        bu: initialData.bu || '',
+        skill: initialData.skill || '',
+        location: initialData.location || '',
+        coachId: initialData.coachId || '',
+        start_date: initialData.startDate ? initialData.startDate.split('T')[0] : '',
+        end_date: initialData.endDate ? initialData.endDate.split('T')[0] : '',
+      });
+      setBuValue(initialData.bu || '');
+    } else if (!isEdit) {
+      form.reset({
+        code: '',
+        name: '',
+        bu: '',
+        skill: '',
+        location: '',
+        coachId: '',
+        start_date: '',
+        end_date: '',
+      });
+      setBuValue('');
+    }
+  }, [initialData, isEdit, form, isOpen]);
+
   const handleSubmit = (data: CohortFormData) => {
     // Transform data to match backend DTO
     const payload: any = {
@@ -80,8 +112,8 @@ export const AddCohortModal = ({
       skill: data.skill,
       trainingLocation: data.location, // Map location -> trainingLocation
       startDate: data.start_date, // Map start_date -> startDate
-      endDate: data.end_date, // Map end_date -> endDate
-      activeGencCount: 0 // Default value
+      endDate: data.end_date || null, // Map end_date -> endDate
+      activeGencCount: initialData?.activeGencCount || 0
     };
 
     if (data.coachId) {
@@ -104,7 +136,9 @@ export const AddCohortModal = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl border-border/50 bg-background/95 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Create New Cohort</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            {isEdit ? 'Update Cohort' : 'Create New Cohort'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -304,7 +338,9 @@ export const AddCohortModal = ({
                 Cancel
               </GradientButton>
               <GradientButton type="submit" variant="primary" disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Create Cohort'}
+                {isLoading
+                  ? (isEdit ? 'Updating...' : 'Creating...')
+                  : (isEdit ? 'Update Cohort' : 'Create Cohort')}
               </GradientButton>
             </div>
           </form>

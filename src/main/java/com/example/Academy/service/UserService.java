@@ -63,6 +63,12 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public List<User> createUsers(List<CreateUserRequest> requests) {
+        return requests.stream()
+                .map(this::createUserFromDto)
+                .toList();
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }

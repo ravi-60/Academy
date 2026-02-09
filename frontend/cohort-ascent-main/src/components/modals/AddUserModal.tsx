@@ -27,6 +27,7 @@ const userSchema = z.object({
     required_error: 'Employee type is required',
   }),
   location: z.string().min(1, 'Location is required'),
+  skill: z.string().optional(),
   password: z.string().optional(),
 });
 
@@ -54,57 +55,60 @@ export const AddUserModal = ({
   isEdit,
 }: AddUserModalProps) => {
   const form = useForm<UserFormData>({
-  resolver: zodResolver(userSchema),
-  defaultValues: {
-    empId: defaultValues?.empId || '',
-    name: defaultValues?.name || '',
-    email: defaultValues?.email || '',
-    employeeType: defaultValues?.employeeType || 'INTERNAL',
-    location: defaultValues?.location || '',
-    password: '',
-  },
-});
-
-useEffect(() => {
-  if (defaultValues) {
-    form.reset({
-      empId: defaultValues.empId || '',
-      name: defaultValues.name || '',
-      email: defaultValues.email || '',
-      employeeType: defaultValues.employeeType || 'INTERNAL',
-      location: defaultValues.location || '',
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      empId: defaultValues?.empId || '',
+      name: defaultValues?.name || '',
+      email: defaultValues?.email || '',
+      employeeType: defaultValues?.employeeType || 'INTERNAL',
+      location: defaultValues?.location || '',
+      skill: defaultValues?.skill || '',
       password: '',
-    });
-  }
-}, [defaultValues, form]);
+    },
+  });
+
+  useEffect(() => {
+    if (defaultValues) {
+      form.reset({
+        empId: defaultValues.empId || '',
+        name: defaultValues.name || '',
+        email: defaultValues.email || '',
+        employeeType: defaultValues.employeeType || 'INTERNAL',
+        location: defaultValues.location || '',
+        skill: defaultValues.skill || '',
+        password: '',
+      });
+    }
+  }, [defaultValues, form]);
 
 
 
-const handleSubmit = (data: UserFormData) => {
-  // Enforce password requirement ONLY when adding
-  if (!isEdit && (!data.password || data.password.length < 6)) {
-    form.setError('password', {
-      type: 'manual',
-      message: 'Password must be at least 6 characters',
-    });
-    return;
-  }
+  const handleSubmit = (data: UserFormData) => {
+    // Enforce password requirement ONLY when adding
+    if (!isEdit && (!data.password || data.password.length < 6)) {
+      form.setError('password', {
+        type: 'manual',
+        message: 'Password must be at least 6 characters',
+      });
+      return;
+    }
 
-  const payload: any = {
-    empId: data.empId,
-    name: data.name,
-    email: data.email,
-    employeeType: data.employeeType,
-    location: data.location,
+    const payload: any = {
+      empId: data.empId,
+      name: data.name,
+      email: data.email,
+      employeeType: data.employeeType,
+      location: data.location,
+      skill: data.skill,
+    };
+
+    // Only send password if creating
+    if (!isEdit) {
+      payload.password = data.password;
+    }
+
+    onSubmit(payload);
   };
-
-  // Only send password if creating
-  if (!isEdit) {
-    payload.password = data.password;
-  }
-
-  onSubmit(payload);
-};
 
 
 
@@ -184,7 +188,7 @@ const handleSubmit = (data: UserFormData) => {
                 )}
               />
 
-              {/* <FormField
+              <FormField
                 control={form.control}
                 name="skill"
                 render={({ field }) => (
@@ -196,7 +200,7 @@ const handleSubmit = (data: UserFormData) => {
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
 
               <FormField
                 control={form.control}
@@ -221,25 +225,25 @@ const handleSubmit = (data: UserFormData) => {
               />
 
               {!isEdit && (
-  <FormField
-    control={form.control}
-    name="password"
-    render={({ field }) => (
-      <FormItem className="sm:col-span-2">
-        <FormLabel>Initial Password</FormLabel>
-        <FormControl>
-          <Input
-            type="password"
-            placeholder="••••••••"
-            className="input-premium"
-            {...field}
-          />
-        </FormControl>
-        <FormMessage />
-      </FormItem>
-    )}
-  />
-)}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>Initial Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          className="input-premium"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
             </div>
 
@@ -249,8 +253,8 @@ const handleSubmit = (data: UserFormData) => {
               </GradientButton>
               <GradientButton type="submit" variant="primary" disabled={isLoading}>
                 {isLoading
-  ? isEdit ? 'Updating...' : 'Adding...'
-  : `${isEdit ? 'Update' : 'Add'} ${userType === 'coach' ? 'Coach' : 'Admin'}`}
+                  ? isEdit ? 'Updating...' : 'Adding...'
+                  : `${isEdit ? 'Update' : 'Add'} ${userType === 'coach' ? 'Coach' : 'Admin'}`}
               </GradientButton>
             </div>
           </form>

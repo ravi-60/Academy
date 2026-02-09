@@ -55,6 +55,14 @@ public class UserController {
                                 userService.createUserFromDto(request));
         }
 
+        @PostMapping("/bulk")
+        @PreAuthorize("hasRole('ADMIN')")
+        public ResponseEntity<List<User>> createUsers(
+                        @Valid @RequestBody List<CreateUserRequest> requests) {
+                return ResponseEntity.ok(
+                                userService.createUsers(requests));
+        }
+
         @PutMapping("/{id}")
         @PreAuthorize("hasRole('ADMIN')")
         public ResponseEntity<User> updateUser(
