@@ -17,6 +17,8 @@ import {
   Zap,
   Target,
   Shield,
+  ArrowUpDown,
+  ChevronLeft,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -58,6 +60,10 @@ export const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState('startDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const { data: allCohorts = [], isLoading: isLoadingCohorts } = useCohorts();
 
@@ -74,6 +80,28 @@ export const Reports = () => {
       c.skill.toLowerCase().includes(query)
     );
   }, [allowedCohorts, searchQuery]);
+
+  const sortedCohorts = useMemo(() => {
+    return [...filteredCohorts].sort((a: any, b: any) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredCohorts, sortBy, sortOrder]);
+
+  const totalPages = Math.ceil(sortedCohorts.length / itemsPerPage);
+  const paginatedCohorts = useMemo(() => {
+    return sortedCohorts.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [sortedCohorts, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy, sortOrder]);
 
   const selectedCohort = useMemo(() =>
     allCohorts.find(c => c.id === selectedCohortId),
@@ -226,6 +254,25 @@ export const Reports = () => {
                   />
                 </div>
               </div>
+
+              <div className="relative group">
+                <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [key, order] = e.target.value.split('-');
+                    setSortBy(key);
+                    setSortOrder(order as 'asc' | 'desc');
+                  }}
+                  className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
+                >
+                  <option value="startDate-desc">Latest First</option>
+                  <option value="startDate-asc">Oldest First</option>
+                  <option value="skill-asc">Skill (A-Z)</option>
+                  <option value="activeGencCount-desc">Largest Headcount</option>
+                </select>
+                <ArrowUpDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
             </div>
 
             {/* Performance Overview Snapshot */}
@@ -298,7 +345,7 @@ export const Reports = () => {
 
             {/* Selection Grid */}
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredCohorts.map((cohort, index) => (
+              {paginatedCohorts.map((cohort, index) => (
                 <motion.div
                   key={cohort.id}
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -362,7 +409,7 @@ export const Reports = () => {
                 </motion.div>
               ))}
 
-              {filteredCohorts.length === 0 && (
+              {paginatedCohorts.length === 0 && (
                 <div className="col-span-full py-32 text-center">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -376,6 +423,47 @@ export const Reports = () => {
                 </div>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10">
+                <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+                  Showing <span className="text-foreground">{paginatedCohorts.length}</span> of <span className="text-foreground">{sortedCohorts.length}</span> mission nodes
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all font-bold"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <div className="flex gap-2">
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(i + 1)}
+                        className={cn(
+                          "h-10 w-10 rounded-xl border font-bold text-xs transition-all",
+                          currentPage === i + 1
+                            ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                            : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                        )}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all font-bold"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </motion.div>
         ) : (
           <motion.div

@@ -21,6 +21,8 @@ import {
   Box,
   Target,
   ChevronRight,
+  ArrowUpDown,
+  ChevronLeft,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -38,6 +40,10 @@ export const Coaches = () => {
   const [showCSVUpload, setShowCSVUpload] = useState(false);
   const [addUserType, setAddUserType] = useState<'coach' | 'admin'>('coach');
   const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
@@ -64,6 +70,26 @@ export const Coaches = () => {
       a.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (a.empId && a.empId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const currentList = activeTab === 'coaches' ? filteredCoaches : filteredAdmins;
+
+  const sortedUsers = [...currentList].sort((a: any, b: any) => {
+    let aVal = a[sortBy] || '';
+    let bVal = b[sortBy] || '';
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+  const paginatedUsers = sortedUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, sortBy, sortOrder]);
 
   const handleBulkUpload = (data: Record<string, string>[]) => {
     const usersToCreate = data.map((row) => ({
@@ -109,7 +135,7 @@ export const Coaches = () => {
   };
 
   const handleDelete = (user: any) => {
-    if (confirm(`Are you sure you want to remove ${user.name}?`)) {
+    if (window.confirm(`Are you sure you want to remove ${user.name}?`)) {
       deleteUser.mutate(user.id);
     }
   };
@@ -229,7 +255,7 @@ export const Coaches = () => {
         ))}
       </motion.div>
 
-      {/* Control Nodes Filter */}
+      {/* Control Nodes Filter and Sorting */}
       <motion.div
         variants={itemVariants}
         className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between pt-6 border-t border-border/10"
@@ -257,17 +283,38 @@ export const Coaches = () => {
           </button>
         </div>
 
-        <div className="relative group w-full lg:w-96">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
-          <div className="relative flex items-center">
-            <Search className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Query Personnel ID or Name..."
-              className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
-            />
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [key, order] = e.target.value.split('-');
+                setSortBy(key);
+                setSortOrder(order as 'asc' | 'desc');
+              }}
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="location-asc">Location</option>
+              <option value="empId-asc">Employee ID</option>
+            </select>
+            <ArrowUpDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+
+          <div className="relative group w-full lg:w-96">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Query Personnel ID or Name..."
+                className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
+              />
+            </div>
           </div>
         </div>
       </motion.div>
@@ -275,7 +322,7 @@ export const Coaches = () => {
       {/* Personnel Grid */}
       <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-2 xl:grid-cols-3 pt-6">
         <AnimatePresence mode="popLayout">
-          {(activeTab === 'coaches' ? filteredCoaches : filteredAdmins).map((userItem, index) => (
+          {paginatedUsers.map((userItem, index) => (
             <motion.div
               key={userItem.id}
               layout
@@ -399,8 +446,49 @@ export const Coaches = () => {
         </AnimatePresence>
       </motion.div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10">
+          <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+            Showing <span className="text-foreground">{paginatedUsers.length}</span> of <span className="text-foreground">{sortedUsers.length}</span> mission nodes
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex gap-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={cn(
+                    "h-10 w-10 rounded-xl border font-bold text-xs transition-all",
+                    currentPage === i + 1
+                      ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                      : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Empty State */}
-      {(activeTab === 'coaches' ? filteredCoaches : filteredAdmins).length === 0 && (
+      {paginatedUsers.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

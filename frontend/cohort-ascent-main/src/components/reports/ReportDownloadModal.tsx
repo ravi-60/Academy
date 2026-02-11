@@ -64,7 +64,8 @@ export const ReportDownloadModal = ({ isOpen, onClose, initialCohortId }: Report
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Executive_Report_${selectedCohort?.code}_${format(new Date(), 'yyyyMMdd')}.${formatType.toLowerCase()}`);
+            const extension = formatType === 'EXCEL' ? 'xlsx' : 'pdf';
+            link.setAttribute('download', `Executive_Report_${selectedCohort?.code}_${format(new Date(), 'yyyyMMdd')}.${extension}`);
             document.body.appendChild(link);
             link.click();
             link.remove();

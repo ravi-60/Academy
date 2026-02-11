@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,6 +10,7 @@ import {
   Calendar,
   ArrowUpRight,
   ChevronDown,
+  ArrowUpDown,
   Upload,
   User,
   Activity,
@@ -17,6 +18,8 @@ import {
   Target,
   TrendingUp,
   Zap,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useCohortStore, Cohort } from '@/stores/cohortStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -28,6 +31,7 @@ import { ActionMenu } from '@/components/ui/ActionMenu';
 import { AddCohortModal } from '@/components/modals/AddCohortModal';
 import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const statusConfig = {
   active: { label: 'Active', class: 'badge-active' },
@@ -46,7 +50,7 @@ export const Cohorts = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  const { data: dbCohorts = [] } = useCohorts();
+  const { data: dbCohorts = [], isLoading: isLoadingCohorts } = useCohorts();
   const createCohort = useCreateCohort();
   const createCohorts = useCreateCohorts();
   const updateCohort = useUpdateCohort();
@@ -56,19 +60,24 @@ export const Cohorts = () => {
   const isAdmin = user?.role === 'ADMIN';
 
   // Use DB cohorts if available, otherwise mock
-  const cohorts = dbCohorts.length > 0
+  const [sortBy, setSortBy] = useState<string>('startDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  const cohorts = (dbCohorts && dbCohorts.length > 0) || !isLoadingCohorts
     ? dbCohorts.map((c: any) => ({
-      id: c.id.toString(),
+      id: c.id,
       code: c.code,
-      name: c.code, // Using code as name since backend doesn't have name field
+      name: c.code,
       bu: c.bu,
       skill: c.skill,
       location: c.trainingLocation,
       startDate: c.startDate,
       endDate: c.endDate,
-      status: 'active' as 'active' | 'upcoming' | 'completed', // Default to active
-      candidateCount: c.totalGencCount ?? c.activeGencCount,
-      progress: c.progress || 0, // Backend doesn't have progress field
+      status: 'active' as 'active' | 'upcoming' | 'completed',
+      candidateCount: c.totalGencCount || c.activeGencCount || 0,
+      progress: c.progress || 0,
       coachId: c.coach?.id?.toString() || '',
       coachName: c.coach?.name || 'Unassigned',
       trainers: [],
@@ -99,12 +108,32 @@ export const Cohorts = () => {
     return matchesSearch && matchesStatus && matchesLocation && matchesRole;
   });
 
+  const sortedCohorts = [...filteredCohorts].sort((a, b) => {
+    const aVal = a[sortBy as keyof typeof a];
+    const bVal = b[sortBy as keyof typeof b];
+
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedCohorts.length / itemsPerPage);
+  const paginatedCohorts = sortedCohorts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 on filter/sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, locationFilter, sortBy, sortOrder]);
+
   const handleCreateCohort = (data: any) => {
     console.log('Submitting cohort:', data);
 
     if (isEditing && selectedCohort) {
       updateCohort.mutate({
-        id: selectedCohort.id,
+        id: Number(selectedCohort.id),
         data: data
       }, {
         onSuccess: () => {
@@ -160,9 +189,9 @@ export const Cohorts = () => {
   };
 
   const handleDeleteCohort = (cohort: any) => {
-    if (confirm(`Are you sure you want to delete ${cohort.name}?`)) {
+    if (window.confirm(`Are you sure you want to delete ${cohort.name}?`)) {
       if (dbCohorts.length > 0) {
-        deleteCohort.mutate(cohort.id);
+        deleteCohort.mutate(Number(cohort.id));
       } else {
         toast.info('Cannot delete mock data');
       }
@@ -322,6 +351,25 @@ export const Cohorts = () => {
           <div className="relative group">
             <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
             <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [key, order] = e.target.value.split('-');
+                setSortBy(key);
+                setSortOrder(order as 'asc' | 'desc');
+              }}
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
+            >
+              <option value="startDate-desc">Newest First</option>
+              <option value="startDate-asc">Oldest First</option>
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="candidateCount-desc">Most Personnel</option>
+            </select>
+            <ArrowUpDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
+            <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="relative input-premium appearance-none pr-12 py-4 bg-background/80"
@@ -354,7 +402,7 @@ export const Cohorts = () => {
       {/* Cohorts Grid */}
       <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-2 xl:grid-cols-3 pt-6">
         <AnimatePresence mode="popLayout">
-          {filteredCohorts.map((cohort, index) => (
+          {paginatedCohorts.map((cohort, index) => (
             <motion.div
               key={cohort.id}
               layout
@@ -375,6 +423,47 @@ export const Cohorts = () => {
           ))}
         </AnimatePresence>
       </motion.div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10">
+          <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+            Showing <span className="text-foreground">{paginatedCohorts.length}</span> of <span className="text-foreground">{filteredCohorts.length}</span> mission nodes
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              className="h-12 w-12 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="flex gap-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={cn(
+                    "h-12 w-12 rounded-xl border font-bold text-sm transition-all",
+                    currentPage === i + 1
+                      ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              className="h-12 w-12 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {filteredCohorts.length === 0 && (
         <motion.div

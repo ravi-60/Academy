@@ -30,6 +30,7 @@ public class ExecutiveReportData {
 
     // Breakdown
     private List<DailyReportLog> dailyLogs;
+    private List<DetailedEffortLog> detailedLogs;
 
     @Data
     @Builder
@@ -41,5 +42,27 @@ public class ExecutiveReportData {
         private BigDecimal buddyMentorHours;
         private boolean isHoliday;
         private String notes;
+    }
+
+    @Data
+    @Builder
+    public static class DetailedEffortLog {
+        private String cohortCode;
+        private String bu;
+        private String skill;
+        private Integer activeGencCount;
+        private String trainingLocation;
+        private String mapped; // External/Internal
+        private String mentorId;
+        private String mentorName;
+        private String role; // SME/Mentor/Buddy Mentor/MFRP Contributor
+        private String mode; // Mode in which trainer connected
+        private String reasonVirtual;
+        private String areaOfVisit;
+        private BigDecimal effortHours;
+        private LocalDate date;
+        private String month;
+        private String updatedBy;
+        private LocalDateTime updatedDate;
     }
 }

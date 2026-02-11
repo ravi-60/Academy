@@ -17,13 +17,16 @@ import {
     ChevronRight,
     ShieldCheck,
     Activity as ActivityIcon,
-    RefreshCw
+    RefreshCw,
+    ChevronLeft,
+    ChevronDown
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 
 const container = {
@@ -47,6 +50,10 @@ export const Activity = () => {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('ALL');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [sortBy, setSortBy] = useState('createdAt');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     const filteredNotifications = useMemo(() => {
         return notifications
@@ -58,6 +65,28 @@ export const Activity = () => {
                 return matchesSearch && matchesFilter;
             });
     }, [notifications, search, filter]);
+
+    const sortedNotifications = useMemo(() => {
+        return [...filteredNotifications].sort((a: any, b: any) => {
+            const aVal = a[sortBy];
+            const bVal = b[sortBy];
+            if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [filteredNotifications, sortBy, sortOrder]);
+
+    const totalPages = Math.ceil(sortedNotifications.length / itemsPerPage);
+    const paginatedNotifications = useMemo(() => {
+        return sortedNotifications.slice(
+            (currentPage - 1) * itemsPerPage,
+            currentPage * itemsPerPage
+        );
+    }, [sortedNotifications, currentPage, itemsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, filter, sortBy, sortOrder]);
 
     const getActivityIcon = (type: string) => {
         switch (type) {
@@ -155,22 +184,41 @@ export const Activity = () => {
                                     className="w-full bg-transparent border-none focus:ring-0 pl-12 h-12 text-sm font-medium text-foreground placeholder:text-muted-foreground/50"
                                 />
                             </div>
-                            <div className="flex items-center gap-1.5 p-1 bg-background/40 rounded-xl overflow-x-auto max-w-full no-scrollbar">
-                                {['ALL', 'COHORT_CREATED', 'REPORT_SUBMITTED', 'ROLE_UPDATE', 'SYSTEM_ALERT'].map((t) => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setFilter(t)}
-                                        className={`
-                      whitespace-nowrap px-4 py-2 rounded-lg text-[10px] font-bold transition-all duration-300 uppercase tracking-widest
-                      ${filter === t
-                                                ? 'bg-primary text-primary-foreground shadow-glow-cyan'
-                                                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                                            }
-                    `}
+                            <div className="flex items-center gap-4 px-2">
+                                <div className="relative group">
+                                    <select
+                                        value={`${sortBy}-${sortOrder}`}
+                                        onChange={(e) => {
+                                            const [key, order] = e.target.value.split('-');
+                                            setSortBy(key);
+                                            setSortOrder(order as 'asc' | 'desc');
+                                        }}
+                                        className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-muted-foreground focus:ring-0 appearance-none pr-8 cursor-pointer hover:text-primary transition-colors"
                                     >
-                                        {t === 'ALL' ? 'Everything' : t.replace('_', ' ')}
-                                    </button>
-                                ))}
+                                        <option value="createdAt-desc">Newest</option>
+                                        <option value="createdAt-asc">Oldest</option>
+                                        <option value="title-asc">Title</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                                </div>
+                                <div className="h-4 w-px bg-border/40" />
+                                <div className="flex items-center gap-1.5 p-1 bg-background/40 rounded-xl overflow-x-auto max-w-full no-scrollbar">
+                                    {['ALL', 'COHORT_CREATED', 'REPORT_SUBMITTED', 'ROLE_UPDATE', 'SYSTEM_ALERT'].map((t) => (
+                                        <button
+                                            key={t}
+                                            onClick={() => setFilter(t)}
+                                            className={`
+                                                whitespace-nowrap px-4 py-2 rounded-lg text-[10px] font-bold transition-all duration-300 uppercase tracking-widest
+                                                ${filter === t
+                                                    ? 'bg-primary text-primary-foreground shadow-glow-cyan'
+                                                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                                                }
+                                            `}
+                                        >
+                                            {t === 'ALL' ? 'Everything' : t.replace('_', ' ')}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </GlassCard>
@@ -198,8 +246,8 @@ export const Activity = () => {
                 <div className="absolute left-4 sm:left-6 top-4 bottom-4 w-px bg-gradient-to-b from-primary/50 via-primary/20 to-transparent" />
 
                 <AnimatePresence mode="popLayout">
-                    {filteredNotifications.length > 0 ? (
-                        filteredNotifications.map((n) => {
+                    {paginatedNotifications.length > 0 ? (
+                        paginatedNotifications.map((n) => {
                             const Icon = getActivityIcon(n.type);
                             const statusStyle = getStatusStyle(n.type);
 
@@ -302,6 +350,47 @@ export const Activity = () => {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10 ml-4 sm:ml-8">
+                        <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+                            Showing <span className="text-foreground">{paginatedNotifications.length}</span> of <span className="text-foreground">{sortedNotifications.length}</span> atomic events
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <div className="flex gap-2">
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setCurrentPage(i + 1)}
+                                        className={cn(
+                                            "h-10 w-10 rounded-xl border font-bold text-xs transition-all",
+                                            currentPage === i + 1
+                                                ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                                                : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                        )}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                            </div>
+                            <button
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </motion.div>
         </div>
     );

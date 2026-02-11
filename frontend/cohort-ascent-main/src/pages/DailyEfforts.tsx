@@ -23,7 +23,10 @@ import {
   Search as SearchIcon,
   Filter,
   Download,
-  Activity
+  FileText,
+  Table as TableIcon,
+  Activity,
+  ArrowUpDown
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -57,6 +60,11 @@ export const DailyEfforts = () => {
   const [selectedWeekId, setSelectedWeekId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
+  const [historySortBy, setHistorySortBy] = useState<string>("weekStartDate");
+  const [historySortOrder, setHistorySortOrder] = useState<"asc" | "desc">("desc");
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyItemsPerPage = 4;
+
   const [localDayLogs, setLocalDayLogs] = useState<Record<string, DayLog>>({});
   const [savedDays, setSavedDays] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,6 +181,49 @@ export const DailyEfforts = () => {
     return sections;
   }, [cohortDetail, mappingTrainers, mappingMentors]);
 
+
+
+  // Pre-calculate history data
+  const processedHistory = useMemo(() => {
+    const filtered = weeklySummaries.filter(s => {
+      const query = historySearchQuery.toLowerCase();
+      const weekNumber = calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === s.weekStartDate)?.weekNumber;
+      const weekNumberString = weekNumber ? `Week ${weekNumber}` : '';
+      const weekDates = s.weekStartDate && s.weekEndDate ?
+        `${format(parseISO(s.weekStartDate), 'MMM dd')} - ${format(parseISO(s.weekEndDate), 'MMM dd, yyyy')}` : '';
+
+      return (
+        s.weekStartDate.toLowerCase().includes(query) ||
+        weekNumberString.toLowerCase().includes(query) ||
+        weekDates.toLowerCase().includes(query) ||
+        s.submittedBy?.toLowerCase().includes(query) ||
+        s.totalHours.toString().includes(query)
+      );
+    });
+
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      const aVal = a[historySortBy];
+      const bVal = b[historySortBy];
+      if (aVal < bVal) return historySortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return historySortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(sorted.length / historyItemsPerPage));
+    const paginated = sorted.slice((historyPage - 1) * historyItemsPerPage, historyPage * historyItemsPerPage);
+
+    return {
+      filtered,
+      sorted,
+      paginated,
+      totalPages
+    };
+  }, [weeklySummaries, historySearchQuery, calendarWeeks, historySortBy, historySortOrder, historyPage, historyItemsPerPage]);
+
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historySearchQuery, historySortBy, historySortOrder]);
 
 
   // Initialize local day logs
@@ -648,16 +699,38 @@ export const DailyEfforts = () => {
 
                   <div className="flex items-center gap-4">
                     <div className="relative group">
+                      <select
+                        value={`${historySortBy}-${historySortOrder}`}
+                        onChange={(e) => {
+                          const [key, order] = e.target.value.split('-');
+                          setHistorySortBy(key);
+                          setHistorySortOrder(order as 'asc' | 'desc');
+                          setHistoryPage(1);
+                        }}
+                        className="pl-4 pr-10 py-2.5 bg-background/40 border border-border/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none transition-all"
+                      >
+                        <option value="weekStartDate-desc">Newest First</option>
+                        <option value="weekStartDate-asc">Oldest First</option>
+                        <option value="totalHours-desc">Most Hours</option>
+                        <option value="totalHours-asc">Least Hours</option>
+                      </select>
+                      <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    </div>
+
+                    <div className="relative group">
                       <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <input
                         type="text"
                         placeholder="Filter history..."
                         value={historySearchQuery}
-                        onChange={(e) => setHistorySearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setHistorySearchQuery(e.target.value);
+                          setHistoryPage(1);
+                        }}
                         className="pl-10 pr-4 py-2.5 bg-background/40 border border-border/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-64 transition-all"
                       />
                     </div>
-                    <div className="px-5 py-2.5 bg-primary/10 rounded-xl border border-primary/20 flex items-center gap-3">
+                    <div className="hidden xl:flex px-5 py-2.5 bg-primary/10 rounded-xl border border-primary/20 items-center gap-3">
                       <div>
                         <p className="text-[9px] font-black text-primary/60 uppercase tracking-widest leading-none">Total Hours</p>
                         <p className="text-lg font-black text-primary">{weeklySummaries.reduce((acc, s) => acc + Number(s.totalHours), 0)}</p>
@@ -671,103 +744,88 @@ export const DailyEfforts = () => {
                   </div>
                 </div>
 
+                {/* History Grid with Sorting/Pagination */}
                 <div className="grid gap-6 md:grid-cols-2">
-                  {weeklySummaries.length === 0 ? (
+                  {processedHistory.paginated.length === 0 ? (
                     <div className="col-span-full py-24 text-center bg-card/10 rounded-3xl border border-dashed border-border/50">
                       <History className="h-16 w-16 text-muted-foreground/10 mx-auto mb-4" />
                       <p className="text-muted-foreground font-bold uppercase tracking-widest">No submission history found</p>
                     </div>
                   ) : (
-                    weeklySummaries
-                      .filter(s => {
-                        const query = historySearchQuery.toLowerCase();
-                        const weekNumber = calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === s.weekStartDate)?.weekNumber;
-                        const weekNumberString = weekNumber ? `Week ${weekNumber}` : '';
-                        const weekDates = s.weekStartDate && s.weekEndDate ?
-                          `${format(parseISO(s.weekStartDate), 'MMM dd')} - ${format(parseISO(s.weekEndDate), 'MMM dd, yyyy')}` : '';
+                    processedHistory.paginated.map(summary => (
+                      <GlassCard key={summary.id} className="p-8 border border-border/40 flex flex-col hover:border-primary/40 hover:shadow-neon-blue/10 transition-all duration-500 group relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-all group-hover:bg-primary/10" />
 
-                        return (
-                          s.weekStartDate.toLowerCase().includes(query) ||
-                          weekNumberString.toLowerCase().includes(query) ||
-                          weekDates.toLowerCase().includes(query) ||
-                          s.submittedBy?.toLowerCase().includes(query) ||
-                          s.totalHours.toString().includes(query)
-                        );
-                      })
-                      .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
-                      .map(summary => (
-                        <GlassCard key={summary.id} className="p-8 border border-border/40 flex flex-col hover:border-primary/40 hover:shadow-neon-blue/10 transition-all duration-500 group relative overflow-hidden">
-                          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12 transition-all group-hover:bg-primary/10" />
+                        <div className="flex justify-between items-start mb-8 relative z-10">
+                          <div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">Entry Locked</span>
+                              <h4 className="text-xl font-bold text-white tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
+                            </div>
+                            <p className="text-xs text-muted-foreground font-bold flex items-center gap-2">
+                              <Calendar className="h-3.5 w-3.5 text-primary/60" />
+                              {summary.weekStartDate && summary.weekEndDate ?
+                                `${format(parseISO(summary.weekStartDate), 'MMM dd')} - ${format(parseISO(summary.weekEndDate), 'MMM dd, yyyy')}`
+                                : 'Dates Unavailable'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <div className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase rounded-lg border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                              Verified Record
+                            </div>
+                            <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-tighter opacity-60">
+                              {summary.summaryDate ? format(parseISO(summary.summaryDate), 'MMM dd, HH:mm') : 'Verification Pending'}
+                            </p>
+                          </div>
+                        </div>
 
-                          <div className="flex justify-between items-start mb-8 relative z-10">
+                        {/* Breakdown Grid */}
+                        <div className="grid grid-cols-2 gap-y-6 gap-x-8 mb-8 p-5 rounded-2xl bg-muted/20 border border-border/30 relative z-10">
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Technical Tr.</p>
+                            <p className="text-lg font-black text-foreground flex items-baseline gap-1">
+                              {summary.technicalTrainerHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
+                            </p>
+                          </div>
+                          <div className="space-y-1.5 text-right">
+                            <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Behavioral Tr.</p>
+                            <p className="text-lg font-black text-foreground flex items-baseline gap-1 justify-end">
+                              {summary.behavioralTrainerHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Mentorship</p>
+                            <p className="text-lg font-black text-foreground flex items-baseline gap-1">
+                              {summary.mentorHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
+                            </p>
+                          </div>
+                          <div className="space-y-1.5 text-right">
+                            <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Buddy Mentor</p>
+                            <p className="text-lg font-black text-foreground flex items-baseline gap-1 justify-end">
+                              {summary.buddyMentorHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-auto pt-6 border-t border-border/30 relative z-10">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-neon-blue/10 flex items-center justify-center text-sm font-black text-primary border border-primary/20 shadow-inner">
+                              {summary.submittedBy?.charAt(0) || 'S'}
+                            </div>
                             <div>
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">Entry Locked</span>
-                                <h4 className="text-xl font-bold text-white tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
-                              </div>
-                              <p className="text-xs text-muted-foreground font-bold flex items-center gap-2">
-                                <Calendar className="h-3.5 w-3.5 text-primary/60" />
-                                {summary.weekStartDate && summary.weekEndDate ?
-                                  `${format(parseISO(summary.weekStartDate), 'MMM dd')} - ${format(parseISO(summary.weekEndDate), 'MMM dd, yyyy')}`
-                                  : 'Dates Unavailable'}
-                              </p>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <div className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase rounded-lg border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                                Verified Record
-                              </div>
-                              <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-tighter opacity-60">
-                                {summary.summaryDate ? format(parseISO(summary.summaryDate), 'MMM dd, HH:mm') : 'Verification Pending'}
-                              </p>
+                              <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-[0.1em] leading-none mb-1">Approved By</p>
+                              <p className="text-sm font-black text-foreground">{summary.submittedBy || 'System Lead'}</p>
                             </div>
                           </div>
-
-                          {/* Breakdown Grid */}
-                          <div className="grid grid-cols-2 gap-y-6 gap-x-8 mb-8 p-5 rounded-2xl bg-muted/20 border border-border/30 relative z-10">
-                            <div className="space-y-1.5">
-                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Technical Tr.</p>
-                              <p className="text-lg font-black text-foreground flex items-baseline gap-1">
-                                {summary.technicalTrainerHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
-                              </p>
-                            </div>
-                            <div className="space-y-1.5 text-right">
-                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Behavioral Tr.</p>
-                              <p className="text-lg font-black text-foreground flex items-baseline gap-1 justify-end">
-                                {summary.behavioralTrainerHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
-                              </p>
-                            </div>
-                            <div className="space-y-1.5">
-                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Mentorship</p>
-                              <p className="text-lg font-black text-foreground flex items-baseline gap-1">
-                                {summary.mentorHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
-                              </p>
-                            </div>
-                            <div className="space-y-1.5 text-right">
-                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.15em]">Buddy Mentor</p>
-                              <p className="text-lg font-black text-foreground flex items-baseline gap-1 justify-end">
-                                {summary.buddyMentorHours} <span className="text-[10px] text-muted-foreground/60 uppercase">hrs</span>
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between mt-auto pt-6 border-t border-border/30 relative z-10">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-neon-blue/10 flex items-center justify-center text-sm font-black text-primary border border-primary/20 shadow-inner">
-                                {summary.submittedBy?.charAt(0) || 'S'}
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-[0.1em] leading-none mb-1">Approved By</p>
-                                <p className="text-sm font-black text-foreground">{summary.submittedBy || 'System Lead'}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4">
+                            <div className="flex gap-2">
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <button
                                       onClick={async () => {
                                         if (!selectedCohortId) return;
-                                        const toastId = toast.loading('Generating executive brief...');
+                                        const toastId = toast.loading('Generating Executive PDF...');
                                         try {
                                           const res = await reportApi.exportReport({
                                             cohortId: selectedCohortId,
@@ -782,14 +840,14 @@ export const DailyEfforts = () => {
                                           document.body.appendChild(link);
                                           link.click();
                                           link.remove();
-                                          toast.success('Report downloaded successfully!', { id: toastId });
+                                          toast.success('PDF downloaded!', { id: toastId });
                                         } catch (e) {
-                                          toast.error('Download failed. Internal system error.', { id: toastId });
+                                          toast.error('PDF generation failed.', { id: toastId });
                                         }
                                       }}
-                                      className="h-11 w-11 flex items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-lg shadow-primary/5 group/btn"
+                                      className="h-11 w-11 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 shadow-lg shadow-red-500/5 group/btn"
                                     >
-                                      <Download className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                                      <FileText className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
                                     </button>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -798,19 +856,98 @@ export const DailyEfforts = () => {
                                 </Tooltip>
                               </TooltipProvider>
 
-                              <div className="text-right">
-                                <p className="text-[9px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Verified</p>
-                                <div className="flex items-baseline gap-1.5 justify-end">
-                                  <p className="text-3xl font-black text-primary tracking-tighter">{summary.totalHours}</p>
-                                  <span className="text-xs font-black text-primary/60 uppercase">h</span>
-                                </div>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={async () => {
+                                        if (!selectedCohortId) return;
+                                        const toastId = toast.loading('Generating Data Excel...');
+                                        try {
+                                          const res = await reportApi.exportReport({
+                                            cohortId: selectedCohortId,
+                                            startDate: summary.weekStartDate,
+                                            endDate: summary.weekEndDate,
+                                            format: 'EXCEL'
+                                          });
+                                          const url = window.URL.createObjectURL(new Blob([res.data]));
+                                          const link = document.createElement('a');
+                                          link.href = url;
+                                          link.setAttribute('download', `Data_Telemetry_${cohortDetail?.code}_${summary.weekStartDate}.xlsx`);
+                                          document.body.appendChild(link);
+                                          link.click();
+                                          link.remove();
+                                          toast.success('Excel downloaded!', { id: toastId });
+                                        } catch (e) {
+                                          toast.error('Excel generation failed.', { id: toastId });
+                                        }
+                                      }}
+                                      className="h-11 w-11 flex items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all duration-300 shadow-lg shadow-emerald-500/5 group/btn"
+                                    >
+                                      <TableIcon className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs font-black">Download Analysis Excel</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-[9px] font-black text-primary/60 uppercase tracking-[0.2em] mb-1">Total Verified</p>
+                              <div className="flex items-baseline gap-1.5 justify-end">
+                                <p className="text-3xl font-black text-primary tracking-tighter">{summary.totalHours}</p>
+                                <span className="text-xs font-black text-primary/60 uppercase">h</span>
                               </div>
                             </div>
                           </div>
-                        </GlassCard>
-                      ))
+                        </div>
+                      </GlassCard>
+                    ))
                   )}
                 </div>
+
+                {/* History Pagination Footer */}
+                {processedHistory.totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10">
+                    <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+                      Showing <span className="text-foreground">{processedHistory.paginated.length}</span> of <span className="text-foreground">{processedHistory.filtered.length}</span> verified records
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={historyPage === 1}
+                        onClick={() => setHistoryPage(prev => Math.max(1, prev - 1))}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <div className="flex gap-2">
+                        {Array.from({ length: processedHistory.totalPages }).map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setHistoryPage(i + 1)}
+                            className={cn(
+                              "h-10 w-10 rounded-xl border font-bold text-xs transition-all",
+                              historyPage === i + 1
+                                ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                                : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                            )}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        disabled={historyPage === processedHistory.totalPages}
+                        onClick={() => setHistoryPage(prev => Math.min(processedHistory.totalPages, prev + 1))}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div

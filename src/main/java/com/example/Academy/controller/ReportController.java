@@ -44,9 +44,11 @@ public class ReportController {
 
         byte[] reportContent = executiveReportService.generateReport(cohortId, startDate, endDate, format);
 
-        String filename = "Cohort_Report_" + cohortId + "." + format.toLowerCase();
+        String extension = format.equalsIgnoreCase("EXCEL") ? "xlsx" : format.toLowerCase();
+        String filename = "Cohort_Report_" + cohortId + "." + extension;
+
         MediaType mediaType = format.equalsIgnoreCase("PDF") ? MediaType.APPLICATION_PDF
-                : MediaType.APPLICATION_OCTET_STREAM;
+                : MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

@@ -13,6 +13,9 @@ import {
   Activity,
   Shield,
   Target,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -37,6 +40,10 @@ export const Stakeholders = () => {
   const [trainerModalMode, setTrainerModalMode] = useState<'add' | 'edit'>('add');
   const [selectedMentor, setSelectedMentor] = useState<Mentor | null>(null);
   const [mentorModalMode, setMentorModalMode] = useState<'add' | 'edit'>('add');
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const { data: cohorts = [] } = useCohorts();
 
@@ -69,6 +76,26 @@ export const Stakeholders = () => {
       m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.skill.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const currentList = activeTab === 'trainers' ? filteredTrainers : filteredMentors;
+
+  const sortedItems = [...currentList].sort((a: any, b: any) => {
+    const aVal = a[sortBy] || '';
+    const bVal = b[sortBy] || '';
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+  const paginatedItems = sortedItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, selectedCohort, sortBy, sortOrder]);
 
   const handleAddTrainer = (data: any) => {
     createTrainer.mutate({
@@ -227,17 +254,38 @@ export const Stakeholders = () => {
           </div>
         </div>
 
-        <div className="relative group w-full lg:w-96">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
-          <div className="relative flex items-center">
-            <Search className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Query taskforce identity (Name, Skill)..."
-              className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
-            />
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="relative group">
+            <div className="absolute -inset-0.5 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-0 group-hover:opacity-100 transition-opacity" />
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [key, order] = e.target.value.split('-');
+                setSortBy(key);
+                setSortOrder(order as 'asc' | 'desc');
+              }}
+              className="relative input-premium appearance-none pr-12 py-4 bg-background/80 w-48"
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="skill-asc">Skill</option>
+              <option value="type-asc">Type</option>
+            </select>
+            <ArrowUpDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+
+          <div className="relative group w-full lg:w-96">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 to-secondary/20 blur opacity-30 group-hover:opacity-60 transition-opacity" />
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Query taskforce identity (Name, Skill)..."
+                className="input-premium w-full pl-12 pr-4 py-4 bg-background/50 backdrop-blur-xl"
+              />
+            </div>
           </div>
         </div>
       </motion.div>
@@ -245,7 +293,7 @@ export const Stakeholders = () => {
       {/* Resource Grid */}
       <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-2 xl:grid-cols-3 pt-6">
         <AnimatePresence mode="popLayout">
-          {(activeTab === 'trainers' ? filteredTrainers : filteredMentors).map((item, index) => (
+          {paginatedItems.map((item, index) => (
             <motion.div
               key={item.id}
               layout
@@ -264,7 +312,11 @@ export const Stakeholders = () => {
                 onClick={() => {
                   if (item.status === 'INACTIVE') {
                     if (window.confirm(`Reactivate mission node: ${item.name}?`)) {
-                      activeTab === 'trainers' ? reactivateTrainer.mutate(item.id) : reactivateMentor.mutate(item.id);
+                      if (activeTab === 'trainers') {
+                        reactivateTrainer.mutate(item.id);
+                      } else {
+                        reactivateMentor.mutate(item.id);
+                      }
                     }
                   }
                 }}
@@ -361,8 +413,49 @@ export const Stakeholders = () => {
         </AnimatePresence>
       </motion.div>
 
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-10 border-t border-border/10">
+          <p className="text-xs font-bold text-muted-foreground/60 uppercase tracking-[0.2em]">
+            Showing <span className="text-foreground">{paginatedItems.length}</span> of <span className="text-foreground">{sortedItems.length}</span> command units
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex gap-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={cn(
+                    "h-10 w-10 rounded-xl border font-bold text-xs transition-all",
+                    currentPage === i + 1
+                      ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                      : "bg-card border-border/40 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-card border border-border/40 hover:bg-primary/10 hover:text-primary disabled:opacity-30 transition-all"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Empty State */}
-      {(activeTab === 'trainers' ? filteredTrainers : filteredMentors).length === 0 && (
+      {paginatedItems.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -377,7 +470,7 @@ export const Stakeholders = () => {
           <div className="space-y-2">
             <h3 className="text-2xl font-bold text-foreground">Personnel Vacuum</h3>
             <p className="text-muted-foreground max-w-sm font-medium">
-              No active mission nodes detected for {activeTab}. The deployment grid is empty.
+              No active mission nodes detected for {activeTab} matching your filters.
             </p>
             <GradientButton
               variant="primary"

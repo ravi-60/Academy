@@ -21,6 +21,7 @@ import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandida
 import { useCohorts } from '@/hooks/useCohortsBackend';
 import { AddCandidateModal } from '@/components/modals/AddCandidateModal';
 import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
+import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -171,7 +172,7 @@ export const Candidates = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this candidate?')) {
+    if (window.confirm('Are you sure you want to delete this candidate?')) {
       deleteCandidate.mutate(id);
     }
   };
@@ -380,105 +381,95 @@ export const Candidates = () => {
             <p className="mt-4 text-muted-foreground">Loading candidates...</p>
           </GlassCard>
         ) : (
-          <GlassCard className="overflow-hidden">
-            {filteredCandidates.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Associate ID</th>
-                      <th>Name</th>
-                      <th>Cohort</th>
-                      <th>Status</th>
-                      <th>Join Date</th>
-                      <th className="text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCandidates.map((candidate, index) => (
-                      <motion.tr
-                        key={candidate.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 + index * 0.03 }}
-                        className="group"
-                      >
-                        <td className="font-mono text-sm">{candidate.candidateId}</td>
-                        <td>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-neon-blue/20 text-sm font-semibold text-primary">
-                              {candidate.name.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{candidate.name}</p>
-                              <p className="text-xs text-muted-foreground">{candidate.email}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="text-sm font-medium text-primary/80">{candidate.cohort.code}</td>
-                        <td>
-                          <span className={`badge-status ${statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.class || 'bg-muted'}`}>
-                            {statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.label || candidate.status}
-                          </span>
-                        </td>
-                        <td className="text-muted-foreground">
-                          {candidate.joinDate ? new Date(candidate.joinDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          }) : '-'}
-                        </td>
-                        <td>
-                          <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                            <button
-                              className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                              onClick={() => handleEdit(candidate)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              onClick={() => handleDelete(candidate.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-12 text-center">
-                <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-semibold text-foreground">No candidates found</h3>
-                <p className="mt-2 text-muted-foreground">
-                  {candidates.length === 0
-                    ? 'Upload a CSV or add candidates manually to get started'
-                    : 'Try adjusting your search or filter criteria'}
-                </p>
-                {candidates.length === 0 && (
-                  <div className="mt-6 flex justify-center gap-3">
-                    <GradientButton
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCSVUpload(true)}
-                    >
-                      Upload CSV
-                    </GradientButton>
-                    <GradientButton
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setShowAddCandidate(true)}
-                    >
-                      Add Manually
-                    </GradientButton>
+          <DataTable
+            data={filteredCandidates}
+            searchKey="name"
+            searchPlaceholder="Search by name..."
+            pageSize={10}
+            columns={[
+              {
+                header: 'Associate ID',
+                accessorKey: 'candidateId',
+                sortable: true,
+                className: 'font-mono text-sm'
+              },
+              {
+                header: 'Name',
+                accessorKey: 'name',
+                sortable: true,
+                cell: (candidate) => (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-neon-blue/20 text-sm font-semibold text-primary">
+                      {candidate.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{candidate.name}</p>
+                      <p className="text-xs text-muted-foreground">{candidate.email}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
-          </GlassCard>
+                )
+              },
+              {
+                header: 'Cohort',
+                accessorKey: 'cohort.code',
+                sortable: true,
+                cell: (candidate) => (
+                  <span className="text-sm font-medium text-primary/80">{candidate.cohort.code}</span>
+                )
+              },
+              {
+                header: 'Status',
+                accessorKey: 'status',
+                sortable: true,
+                cell: (candidate) => (
+                  <span className={`badge-status ${statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.class || 'bg-muted'}`}>
+                    {statusConfig[candidate.status.toLowerCase() as keyof typeof statusConfig]?.label || candidate.status}
+                  </span>
+                )
+              },
+              {
+                header: 'Join Date',
+                accessorKey: 'joinDate',
+                sortable: true,
+                cell: (candidate) => (
+                  <span className="text-muted-foreground">
+                    {candidate.joinDate ? new Date(candidate.joinDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    }) : '-'}
+                  </span>
+                )
+              },
+              {
+                header: 'Actions',
+                accessorKey: 'actions',
+                className: 'text-right',
+                cell: (candidate) => (
+                  <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(candidate);
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(candidate.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )
+              }
+            ]}
+          />
         )}
       </motion.div>
 

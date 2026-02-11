@@ -116,8 +116,10 @@ export const AddCohortModal = ({
       activeGencCount: initialData?.activeGencCount || 0
     };
 
-    if (data.coachId) {
+    if (data.coachId && data.coachId !== '') {
       payload.coachId = parseInt(data.coachId, 10);
+    } else {
+      payload.coachId = null;
     }
 
     onSubmit(payload);
