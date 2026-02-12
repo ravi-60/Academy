@@ -159,14 +159,39 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
-    public User updateProfile(Long userId, String name, String location, String avatar) {
+    public User updateProfile(Long userId, String name, String location,
+            org.springframework.web.multipart.MultipartFile avatarFile) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setName(name);
         user.setLocation(location);
-        user.setAvatar(avatar);
+
+        if (avatarFile != null && !avatarFile.isEmpty()) {
+            String avatarUrl = saveAvatar(avatarFile);
+            user.setAvatar(avatarUrl);
+        }
+
         user.setUpdatedAt(java.time.LocalDateTime.now());
         return userRepository.save(user);
+    }
+
+    private String saveAvatar(org.springframework.web.multipart.MultipartFile file) {
+        try {
+            String uploadDir = "profiles/";
+            java.io.File directory = new java.io.File(uploadDir);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+
+            String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            java.nio.file.Path filePath = java.nio.file.Paths.get(uploadDir, filename);
+            java.nio.file.Files.copy(file.getInputStream(), filePath,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            return "/profiles/" + filename;
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to store avatar file", e);
+        }
     }
 
     public void updatePassword(Long userId, String currentPassword, String newPassword) {

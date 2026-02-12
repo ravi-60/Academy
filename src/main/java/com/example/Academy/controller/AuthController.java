@@ -1,6 +1,5 @@
 package com.example.Academy.controller;
 
-import com.example.Academy.config.CustomUserDetailsService;
 import com.example.Academy.entity.User;
 import com.example.Academy.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +22,9 @@ public class AuthController {
     @Autowired
     private com.example.Academy.security.JwtService jwtService;
 
+    @Autowired
+    private org.springframework.security.core.userdetails.UserDetailsService userDetailsService;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
@@ -33,8 +35,7 @@ public class AuthController {
 
             User user = userService.getUserByEmail(loginRequest.getEmail()).orElseThrow();
 
-            String token = jwtService
-                    .generateToken(new CustomUserDetailsService(userService).loadUserByUsername(user.getEmail()));
+            String token = jwtService.generateToken(userDetailsService.loadUserByUsername(user.getEmail()));
 
             return ResponseEntity.ok(new AuthResponse(
                     "Login successful",
@@ -42,9 +43,12 @@ public class AuthController {
                     user.getId(),
                     user.getEmail(),
                     user.getName(),
-                    user.getRole().name()));
+                    user.getRole().name(),
+                    user.getAvatar(),
+                    user.getLocation()));
         } catch (Exception e) {
-            return ResponseEntity.status(401).body("Invalid credentials");
+            e.printStackTrace(); // Added for debugging
+            return ResponseEntity.status(401).body("Invalid credentials: " + e.getMessage());
         }
     }
 
@@ -77,14 +81,19 @@ public class AuthController {
         private String email;
         private String name;
         private String role;
+        private String avatar;
+        private String location;
 
-        public AuthResponse(String message, String token, Long userId, String email, String name, String role) {
+        public AuthResponse(String message, String token, Long userId, String email, String name, String role,
+                String avatar, String location) {
             this.message = message;
             this.token = token;
             this.userId = userId;
             this.email = email;
             this.name = name;
             this.role = role;
+            this.avatar = avatar;
+            this.location = location;
         }
 
         // Getters
@@ -110,6 +119,14 @@ public class AuthController {
 
         public String getRole() {
             return role;
+        }
+
+        public String getAvatar() {
+            return avatar;
+        }
+
+        public String getLocation() {
+            return location;
         }
     }
 }

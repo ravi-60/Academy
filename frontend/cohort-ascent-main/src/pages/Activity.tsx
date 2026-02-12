@@ -203,21 +203,12 @@ export const Activity = () => {
                                 </div>
                                 <div className="h-4 w-px bg-border/40" />
                                 <div className="flex items-center gap-1.5 p-1 bg-background/40 rounded-xl overflow-x-auto max-w-full no-scrollbar">
-                                    {['ALL', 'COHORT_CREATED', 'REPORT_SUBMITTED', 'ROLE_UPDATE', 'SYSTEM_ALERT'].map((t) => (
-                                        <button
-                                            key={t}
-                                            onClick={() => setFilter(t)}
-                                            className={`
-                                                whitespace-nowrap px-4 py-2 rounded-lg text-[10px] font-bold transition-all duration-300 uppercase tracking-widest
-                                                ${filter === t
-                                                    ? 'bg-primary text-primary-foreground shadow-glow-cyan'
-                                                    : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
-                                                }
-                                            `}
-                                        >
-                                            {t === 'ALL' ? 'Everything' : t.replace('_', ' ')}
-                                        </button>
-                                    ))}
+                                    <button
+                                        onClick={() => setFilter('ALL')}
+                                        className="whitespace-nowrap px-4 py-2 rounded-lg text-[10px] font-bold transition-all duration-300 uppercase tracking-widest bg-primary text-primary-foreground shadow-glow-cyan"
+                                    >
+                                        All Notifications
+                                    </button>
                                 </div>
                             </div>
                         </div>

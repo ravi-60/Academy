@@ -17,7 +17,7 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    @Value("${SECURITY_JWT_SECRET_KEY}")
+    @Value("${SECURITY_JWT_SECRET_KEY:hiiamfromcognizanthowareyoudoing1234567}")
 
     private String secretKey;
 
@@ -82,7 +82,13 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (Exception e) {
+            // Fallback to UTF-8 bytes if not valid Base64
+            byte[] keyBytes = secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            return Keys.hmacShaKeyFor(keyBytes);
+        }
     }
 }

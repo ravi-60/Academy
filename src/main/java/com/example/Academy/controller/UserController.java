@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.example.Academy.dto.user.UpdateUserRequest;
-import com.example.Academy.dto.user.ProfileUpdateRequest;
+
 import com.example.Academy.dto.user.PasswordUpdateRequest;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
@@ -72,19 +72,21 @@ public class UserController {
                                 userService.updateUserFromDto(id, request));
         }
 
-        @PutMapping("/profile")
+        @PutMapping(value = "/profile", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
         public ResponseEntity<User> updateProfile(
-                        @Valid @RequestBody ProfileUpdateRequest request,
+                        @RequestParam("name") String name,
+                        @RequestParam("location") String location,
+                        @RequestParam(value = "avatar", required = false) org.springframework.web.multipart.MultipartFile avatar,
                         Authentication authentication) {
-                String email = (authentication != null) ? authentication.getName() : request.getEmail();
+                String email = (authentication != null) ? authentication.getName() : null; // Fallback if needed, but
+                                                                                           // auth should be present
                 if (email == null) {
                         throw new RuntimeException("Authentication email missing");
                 }
                 User user = userService.getUserByEmail(email)
                                 .orElseThrow(() -> new RuntimeException("User not found"));
                 return ResponseEntity
-                                .ok(userService.updateProfile(user.getId(), request.getName(), request.getLocation(),
-                                                request.getAvatar()));
+                                .ok(userService.updateProfile(user.getId(), name, location, avatar));
         }
 
         @PutMapping("/password")

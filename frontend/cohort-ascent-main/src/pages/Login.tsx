@@ -39,9 +39,16 @@ export const Login = () => {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, userId, email: userEmail, name, role } = response.data;
+      const { token, userId, email: userEmail, name, role, avatar, location } = response.data;
 
-      const user = { id: userId, email: userEmail, name, role: role as any };
+      const user = {
+        id: userId,
+        email: userEmail,
+        name,
+        role: role as any,
+        avatar,
+        location
+      };
 
       localStorage.setItem('authToken', token);
       login(user);

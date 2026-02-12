@@ -51,18 +51,39 @@ const ProfileSettings = () => {
     }
   }, [user]);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const response = await api.put('/users/profile', {
-        name: formData.name,
-        location: formData.location,
-        email: formData.email,
-        avatar: formData.avatar,
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('location', formData.location);
+      data.append('email', formData.email); // Although email isn't updated, backend might need it for auth check fallback
+
+      if (selectedFile) {
+        data.append('avatar', selectedFile);
+      }
+
+      const response = await api.put('/users/profile', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
+
+      // Update local user state with the response which contains the new avatar URL
       updateUser(response.data);
+
+      // Update form data to match new state
+      setFormData(prev => ({
+        ...prev,
+        avatar: response.data.avatar || prev.avatar
+      }));
+      setSelectedFile(null); // Clear selected file after successful upload
+
       toast.success('Core profile synchronized successfully.');
     } catch (error: any) {
+      console.error("Profile sync error:", error);
       toast.error(error.response?.data?.message || 'Synchronization failed.');
     } finally {
       setIsSaving(false);
@@ -72,16 +93,17 @@ const ProfileSettings = () => {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // Increased to 2MB as we now support more
+      if (file.size > 2 * 1024 * 1024) {
         toast.error('Avatar payload exceeds volumetric limits (Max 2MB).');
         return;
       }
 
-      setIsUploading(true);
+      setSelectedFile(file); // Store file for upload
+
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, avatar: reader.result as string }));
-        setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
