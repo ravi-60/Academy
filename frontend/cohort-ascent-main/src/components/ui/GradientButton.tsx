@@ -1,5 +1,6 @@
 import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 interface GradientButtonProps extends HTMLMotionProps<'button'> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
@@ -7,7 +8,9 @@ interface GradientButtonProps extends HTMLMotionProps<'button'> {
   children: React.ReactNode;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  isLoading?: boolean;
 }
+
 
 export const GradientButton = ({
   variant = 'primary',
@@ -15,11 +18,13 @@ export const GradientButton = ({
   children,
   icon,
   iconPosition = 'left',
+  isLoading = false,
   className,
+  disabled,
   ...props
 }: GradientButtonProps) => {
   const baseStyles = 'relative inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-300 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed';
-  
+
   const sizeStyles = {
     sm: 'px-4 py-2 text-sm',
     md: 'px-6 py-3 text-base',
@@ -38,11 +43,18 @@ export const GradientButton = ({
       className={cn(baseStyles, sizeStyles[size], variantStyles[variant], className)}
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
+      disabled={disabled || isLoading}
       {...props}
     >
-      {icon && iconPosition === 'left' && <span className="relative z-10">{icon}</span>}
-      <span className="relative z-10">{children}</span>
-      {icon && iconPosition === 'right' && <span className="relative z-10">{icon}</span>}
+      {isLoading ? (
+        <Loader2 className="h-5 w-5 animate-spin relative z-10" />
+      ) : (
+        <>
+          {icon && iconPosition === 'left' && <span className="relative z-10">{icon}</span>}
+          <span className="relative z-10">{children}</span>
+          {icon && iconPosition === 'right' && <span className="relative z-10">{icon}</span>}
+        </>
+      )}
     </motion.button>
   );
 };

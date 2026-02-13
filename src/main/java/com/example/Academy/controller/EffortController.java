@@ -41,8 +41,8 @@ public class EffortController {
         // Get current user
         Long currentUserId;
         if (authentication != null) {
-            String empId = authentication.getName();
-            User currentUser = userService.getUserByEmpId(empId)
+            String email = authentication.getName();
+            User currentUser = userService.getUserByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             currentUserId = currentUser.getId();
         } else {
@@ -77,8 +77,8 @@ public class EffortController {
         // Get current user
         Long currentUserId;
         if (authentication != null) {
-            String empId = authentication.getName();
-            User currentUser = userService.getUserByEmpId(empId)
+            String email = authentication.getName();
+            User currentUser = userService.getUserByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             currentUserId = currentUser.getId();
         } else {
@@ -124,8 +124,8 @@ public class EffortController {
     @PreAuthorize("hasRole('COACH') or hasRole('LOCATION_LEAD')")
     public ResponseEntity<Void> deleteEffort(@PathVariable Long id, Authentication authentication) {
         // Get current user
-        String empId = authentication.getName();
-        User currentUser = userService.getUserByEmpId(empId)
+        String email = authentication.getName();
+        User currentUser = userService.getUserByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Only allow deletion by the user who submitted or admin

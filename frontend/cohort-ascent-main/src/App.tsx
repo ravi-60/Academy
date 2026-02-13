@@ -18,6 +18,7 @@ import { Coaches } from "./pages/Coaches";
 import { Stakeholders } from "./pages/Stakeholders";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Activity } from "./pages/Activity";
+import { PublicFeedback } from "./pages/PublicFeedback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/feedback/:token" element={<PublicFeedback />} />
 
             {/* Protected Routes */}
             <Route

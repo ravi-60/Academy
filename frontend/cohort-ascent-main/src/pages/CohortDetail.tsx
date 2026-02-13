@@ -18,6 +18,15 @@ import {
   Search,
   Edit2,
   Trash2,
+  MessageSquare,
+  Share2,
+  ExternalLink,
+  Copy,
+  LayoutDashboard,
+  Zap,
+  Star,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import {
   useCohorts,
@@ -26,6 +35,7 @@ import {
   useAdditionalMentors
 } from '@/hooks/useCohortsBackend';
 import { useSubmitWeeklyEffort, useWeeklySummaries, useEffortsByCohortAndRange, useEffortsByCohort } from '@/hooks/useEffortsBackend';
+import { useCohortFeedbackRequests, useCohortFeedbackAnalytics, useCreateFeedbackRequest } from '@/hooks/useFeedback';
 import { Cohort } from '@/integrations/backend/cohortApi';
 import { useCohortStore } from '@/stores/cohortStore';
 import { useTrainers, useCreateTrainer, useAssignTrainer, useUpdateTrainer, useDeleteTrainer, useUnassignTrainer, Trainer } from '@/hooks/useTrainers';
@@ -42,7 +52,7 @@ import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type TabType = 'overview' | 'candidates' | 'stakeholders' | 'efforts' | 'reports';
+type TabType = 'overview' | 'candidates' | 'stakeholders' | 'efforts' | 'reports' | 'feedback';
 
 const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: GraduationCap },
@@ -50,6 +60,7 @@ const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: 'stakeholders', label: 'Trainers & Mentors', icon: UserCheck },
   { id: 'efforts', label: 'Daily Efforts', icon: Calendar },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'feedback', label: 'Feedback Matrix', icon: MessageSquare },
 ];
 
 export const CohortDetail = () => {
@@ -60,7 +71,7 @@ export const CohortDetail = () => {
 
   useEffect(() => {
     const tabParam = searchParams.get('tab') as TabType;
-    if (tabParam && ['overview', 'candidates', 'stakeholders', 'efforts', 'reports'].includes(tabParam)) {
+    if (tabParam && ['overview', 'candidates', 'stakeholders', 'efforts', 'reports', 'feedback'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -227,6 +238,7 @@ export const CohortDetail = () => {
         {activeTab === 'candidates' && <CandidatesTab cohortId={cohort.id.toString()} cohort={cohort} />}
         {activeTab === 'efforts' && <EffortsTab cohortId={cohort.id.toString()} />}
         {activeTab === 'reports' && <ReportsTab cohortId={cohort.id.toString()} />}
+        {activeTab === 'feedback' && <FeedbackTab cohortId={cohort.id.toString()} cohort={cohort} />}
       </motion.div>
     </div>
   );
@@ -1113,5 +1125,384 @@ const ReportsTab = ({ cohortId }: ReportsTabProps) => {
         </GradientButton>
       </div>
     </GlassCard>
+  );
+};
+
+const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort }) => {
+  const [weekNumber, setWeekNumber] = useState(1);
+  const [expiryDays, setExpiryDays] = useState(7);
+  const createRequest = useCreateFeedbackRequest();
+  const { data: requests = [] } = useCohortFeedbackRequests(parseInt(cohortId));
+  const { data: analytics } = useCohortFeedbackAnalytics(parseInt(cohortId));
+
+  const handleCreateRequest = () => {
+    createRequest.mutate({
+      cohortId: parseInt(cohortId),
+      weekNumber,
+      expiryDays
+    });
+  };
+
+  const copyToClipboard = (token: string) => {
+    const url = `${window.location.origin}/feedback/${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Feedback link copied to clipboard');
+  };
+
+  const openLink = (token: string) => {
+    window.open(`/feedback/${token}`, '_blank');
+  };
+
+  const handleStakeholderExport = (type: 'tech' | 'mentor' | 'coach' | 'buddy' | 'behavioral') => {
+    if (!analytics || analytics.responses.length === 0) {
+      toast.error('No data available to export');
+      return;
+    }
+
+    let headers: string[] = [];
+    let rows: any[] = [];
+    const filename = `${cohort.code}_${type}_feedback_${new Date().toISOString().split('T')[0]}.csv`;
+
+    const commonHeaders = [
+      'Feedback Provider (Associate Name)', 'Feedback Receiver (Name)', 'Cohort Name',
+      'Location', 'SL', 'BU', 'SBU', 'Feedback Date'
+    ];
+
+    const getCommonData = (resp: any, receiverName: string) => [
+      resp.candidateName || 'Anonymous',
+      receiverName,
+      cohort.code,
+      cohort.trainingLocation,
+      cohort.bu,
+      cohort.bu,
+      cohort.bu,
+      new Date(resp.createdAt).toLocaleDateString()
+    ];
+
+    switch (type) {
+      case 'tech':
+        headers = [...commonHeaders, 'Was the technical session held this week?', 'Course content delivered effectively', 'Trainer technical knowledge', 'Trainer engagement', 'Concepts covered within schedule', 'Udemy recap provided', 'Additional scenario support', 'Low score explanation feedback', 'Aggregated Score'];
+        rows = analytics.responses.map(r => {
+          const avg = ((r.courseContentRating || 0) + (r.technicalKnowledgeRating || 0) + (r.trainerEngagementRating || 0) + (r.conceptsScheduleRating || 0) + (r.udemyRecapRating || 0) + (r.additionalScenarioRating || 0)) / 6;
+          return [
+            ...getCommonData(r, cohort.primaryTrainer?.name || 'Technical Trainer'),
+            r.isTechnicalSessionHeld ? 'Yes' : 'No',
+            r.courseContentRating || '',
+            r.technicalKnowledgeRating || '',
+            r.trainerEngagementRating || '',
+            r.conceptsScheduleRating || '',
+            r.udemyRecapRating || '',
+            r.additionalScenarioRating || '',
+            r.technicalLowScoreExplanation || '',
+            avg.toFixed(2)
+          ];
+        });
+        break;
+      case 'mentor':
+        headers = [...commonHeaders, 'Was the Mentor session held this week?', 'Mentor guidance & practical input quality', 'Low score explanation feedback', 'Aggregated Score'];
+        rows = analytics.responses.map(r => [
+          ...getCommonData(r, cohort.primaryMentor?.name || 'Mentor'),
+          r.isMentorSessionHeld ? 'Yes' : 'No',
+          r.mentorGuidanceRating || '',
+          r.mentorLowScoreExplanation || '',
+          r.mentorGuidanceRating || ''
+        ]);
+        break;
+      case 'coach':
+        headers = [...commonHeaders, 'Coach effectiveness in guiding learning schedules & support', 'Low score explanation feedback', 'Aggregated Score'];
+        rows = analytics.responses.map(r => [
+          ...getCommonData(r, cohort.coach?.name || 'Coach'),
+          r.coachEffectivenessRating || '',
+          r.coachLowScoreExplanation || '',
+          r.coachEffectivenessRating || ''
+        ]);
+        break;
+      case 'buddy':
+        headers = [...commonHeaders, 'Did Buddy Mentor connect this week?', 'Were doubts clarified?', 'Buddy Mentor guidance effectiveness', 'Concerns or suggestions', 'Aggregated Score'];
+        rows = analytics.responses.map(r => [
+          ...getCommonData(r, cohort.buddyMentor?.name || 'Buddy Mentor'),
+          r.didBuddyMentorConnect ? 'Yes' : 'No',
+          r.wereDoubtsClarified ? 'Yes' : 'No',
+          r.buddyMentorGuidanceRating || '',
+          r.buddyMentorSuggestions || '',
+          r.buddyMentorGuidanceRating || ''
+        ]);
+        break;
+      case 'behavioral':
+        headers = [...commonHeaders, 'Was behavioral session held this week?', 'Behavioral trainer delivery effectiveness', 'Low score explanation feedback', 'Aggregated Score'];
+        rows = analytics.responses.map(r => [
+          ...getCommonData(r, cohort.behavioralTrainer?.name || 'Behavioral Trainer'),
+          r.isBehavioralSessionHeld ? 'Yes' : 'No',
+          r.behavioralDeliveryRating || '',
+          r.behavioralLowScoreExplanation || '',
+          r.behavioralDeliveryRating || ''
+        ]);
+        break;
+    }
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map((cell: any) => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Management Section */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <GlassCard className="p-8 lg:col-span-1 border-primary/20 bg-primary/5">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
+                <Zap className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Initiate Session</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Feedback Node Deployment</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Week Sequence</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={weekNumber}
+                  onChange={(e) => setWeekNumber(parseInt(e.target.value))}
+                  className="input-premium w-full bg-white/5"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground/70">Expiry (Days)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={expiryDays}
+                  onChange={(e) => setExpiryDays(parseInt(e.target.value))}
+                  className="input-premium w-full bg-white/5"
+                />
+              </div>
+              <GradientButton
+                variant="primary"
+                className="w-full h-12 mt-4"
+                onClick={handleCreateRequest}
+                isLoading={createRequest.isPending}
+                icon={<Share2 className="h-4 w-4" />}
+              >
+                Generate Link
+              </GradientButton>
+            </div>
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-8 lg:col-span-2 border-white/5">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/20 text-muted-foreground shadow-inner">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-foreground">Active Matrices</h3>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Deployed Feedback Links</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
+            {requests.length > 0 ? (
+              requests.sort((a, b) => b.weekNumber - a.weekNumber).map((req) => (
+                <div key={req.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary">
+                      W{req.weekNumber}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">Week {req.weekNumber} Feedback</p>
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
+                        Token: {req.token.substring(0, 8)}... • {req.active ? 'Active' : 'Expired'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => copyToClipboard(req.token)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-primary transition-all"
+                      title="Copy Link"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => openLink(req.token)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-primary transition-all"
+                      title="Open Link"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-sm text-muted-foreground">No feedback sessions initiated yet.</p>
+              </div>
+            )}
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Export Section */}
+      <GlassCard className="p-8 border-white/5 bg-slate-900/20">
+        <div className="flex items-center justify-between mb-8">
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold text-foreground">Export Analytical Matrices</h3>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Generate client-requested CSV reports</p>
+          </div>
+          <Download className="h-6 w-6 text-primary animate-bounce" />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            { id: 'tech', label: 'Tech Trainer', icon: Zap, color: 'hover:bg-primary/20 hover:border-primary/50' },
+            { id: 'mentor', label: 'Mentor', icon: Users, color: 'hover:bg-secondary/20 hover:border-secondary/50' },
+            { id: 'coach', label: 'Academy Coach', icon: ShieldCheck, color: 'hover:bg-neon-blue/20 hover:border-neon-blue/50' },
+            { id: 'buddy', label: 'Buddy Mentor', icon: MessageSquare, color: 'hover:bg-amber-500/20 hover:border-amber-500/50' },
+            { id: 'behavioral', label: 'Soft Skills', icon: Sparkles, color: 'hover:bg-success/20 hover:border-success/50' },
+          ].map((type) => (
+            <button
+              key={type.id}
+              onClick={() => handleStakeholderExport(type.id as any)}
+              className={cn(
+                "flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/10 transition-all group",
+                type.color
+              )}
+            >
+              <type.icon className="h-8 w-8 mb-3 opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white">{type.label}</span>
+            </button>
+          ))}
+        </div>
+      </GlassCard>
+
+      {/* Analytics Section */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold flex items-center gap-3">
+              <div className="h-6 w-1.5 rounded-full bg-primary shadow-glow-cyan" />
+              Intelligence Dashboard
+            </h2>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] ml-4.5">Synchronized Feedback Analytics</p>
+          </div>
+          {analytics && (
+            <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase text-primary tracking-widest backdrop-blur-md">
+              Total Responses: {analytics.totalResponses}
+            </div>
+          )}
+        </div>
+
+        {!analytics || analytics.totalResponses === 0 ? (
+          <GlassCard className="p-20 text-center border-dashed border-white/10">
+            <LayoutDashboard className="h-16 w-16 text-muted-foreground/20 mx-auto mb-6" />
+            <h3 className="text-xl font-bold text-slate-400">Telemetry Data Insufficient</h3>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2 leading-relaxed">
+              Insufficient response volume to generate meaningful analytical matrices.
+              Initiate a feedback session to start data collection.
+            </p>
+          </GlassCard>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Rating Matrix */}
+            <GlassCard className="p-8 border-white/10">
+              <h3 className="text-lg font-bold text-foreground mb-8 flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Rating Vector Analysis
+              </h3>
+              <div className="space-y-8">
+                {[
+                  { label: 'Technical Trainer', value: analytics.averages.trainer, color: 'from-primary/40 to-primary' },
+                  { label: 'Mentor Support', value: analytics.averages.mentor, color: 'from-secondary/40 to-secondary' },
+                  { label: 'Coach Interaction', value: analytics.averages.coach, color: 'from-neon-blue/40 to-neon-blue' },
+                  { label: 'Overall Satisfaction', value: analytics.averages.overall, color: 'from-success/40 to-success' },
+                ].map((stat, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
+                      <span className="text-slate-400">{stat.label}</span>
+                      <span className="text-white">{stat.value.toFixed(1)} / 5.0</span>
+                    </div>
+                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(stat.value / 5) * 100}%` }}
+                        transition={{ duration: 1, delay: i * 0.1 }}
+                        className={cn("h-full bg-gradient-to-r rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", stat.color)}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+
+            {/* Insights Terminal */}
+            <GlassCard className="p-8 border-white/10">
+              <h3 className="text-lg font-bold text-foreground mb-8 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-secondary" />
+                Raw Insights Terminal
+              </h3>
+              <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
+                {analytics.responses.slice().reverse().map((resp) => (
+                  <div key={resp.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3 hover:bg-white/10 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-lg bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">
+                            W{resp.weekNumber}
+                          </div>
+                          <span className="text-[10px] font-black uppercase text-slate-500">{new Date(resp.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary">
+                            {resp.candidateName?.charAt(0) || '?'}
+                          </div>
+                          <span className="text-xs font-bold text-white leading-none">{resp.candidateName || 'Anonymous'}</span>
+                          <span className="text-[9px] text-slate-500 font-mono leading-none">({resp.employeeId || 'ID: NA'})</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 self-start pt-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={cn("h-2.5 w-2.5", s <= resp.overallSatisfaction ? "text-primary fill-primary" : "text-slate-700")} />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-slate-300 italic leading-relaxed">
+                        "{resp.technicalLowScoreExplanation || 'No specific technical feedback provided.'}"
+                      </p>
+                      {resp.buddyMentorSuggestions && (
+                        <div className="pt-2 border-t border-white/5">
+                          <p className="text-[10px] font-bold uppercase text-primary mb-1">Buddy Mentor Suggestions:</p>
+                          <p className="text-xs text-slate-400">{resp.buddyMentorSuggestions}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };

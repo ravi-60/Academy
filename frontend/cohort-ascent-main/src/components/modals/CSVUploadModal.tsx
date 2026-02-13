@@ -127,7 +127,7 @@ export const CSVUploadModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl border-border/50 bg-background/95 backdrop-blur-xl">
+      <DialogContent className="max-w-4xl border-border/50 bg-background/95 backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
         </DialogHeader>
@@ -216,22 +216,22 @@ export const CSVUploadModal = ({
               </div>
 
               {parsedData.length > 0 && (
-                <div className="max-h-64 overflow-auto rounded-lg border border-border/30">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted/80">
+                <div className="max-h-80 overflow-auto rounded-lg border border-border/30 custom-scrollbar">
+                  <table className="w-full text-sm border-collapse min-w-[600px]">
+                    <thead className="sticky top-0 bg-muted/90 backdrop-blur-sm z-10 shadow-sm">
                       <tr>
-                        {Object.keys(parsedData[0]).slice(0, 5).map((header) => (
-                          <th key={header} className="px-3 py-2 text-left font-medium text-foreground">
+                        {Object.keys(parsedData[0]).slice(0, 6).map((header) => (
+                          <th key={header} className="px-4 py-3 text-left font-bold text-foreground border-b border-border/30 whitespace-nowrap uppercase tracking-wider text-[10px]">
                             {header.replace(/_/g, ' ')}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {parsedData.slice(0, 5).map((row, i) => (
-                        <tr key={i} className="border-t border-border/30">
-                          {Object.values(row).slice(0, 5).map((value, j) => (
-                            <td key={j} className="px-3 py-2 text-muted-foreground">
+                      {parsedData.slice(0, 10).map((row, i) => (
+                        <tr key={i} className="border-t border-border/10 hover:bg-white/5 transition-colors">
+                          {Object.values(row).slice(0, 6).map((value, j) => (
+                            <td key={j} className="px-4 py-3 text-muted-foreground break-all max-w-[200px]">
                               {value}
                             </td>
                           ))}
@@ -239,10 +239,10 @@ export const CSVUploadModal = ({
                       ))}
                     </tbody>
                   </table>
-                  {parsedData.length > 5 && (
-                    <p className="bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground">
-                      ... and {parsedData.length - 5} more records
-                    </p>
+                  {parsedData.length > 10 && (
+                    <div className="bg-muted/30 px-4 py-3 text-center text-xs font-medium text-muted-foreground border-t border-border/10">
+                      Viewing first 10 records • Total {parsedData.length} entries awaiting import
+                    </div>
                   )}
                 </div>
               )}
