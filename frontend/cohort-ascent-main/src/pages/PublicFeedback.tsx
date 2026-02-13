@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -194,19 +194,26 @@ export const PublicFeedback = () => {
         overallSatisfaction: 0,
     });
 
-    const steps = [
-        { id: 'auth', label: 'Auth', icon: Lock },
-        { id: 'tech', label: 'Tech', icon: Zap },
-        { id: 'logic', label: 'Logic', icon: BrainCircuit },
-        { id: 'coach', label: 'Coach', icon: Activity },
-        { id: 'buddy', label: 'Buddy', icon: Users },
-        { id: 'flow', label: 'Flow', icon: Sparkles },
-        { id: 'final', label: 'Commit', icon: Rocket },
-    ];
+    const steps = useMemo(() => {
+        if (!session) return [];
+        const s = [{ id: 'auth', label: 'Auth', icon: Lock }];
+
+        // Only include steps for assigned roles
+        if (session.trainerName) s.push({ id: 'tech', label: 'Tech', icon: Zap });
+        if (session.mentorName) s.push({ id: 'logic', label: 'Logic', icon: BrainCircuit });
+        if (session.coachName) s.push({ id: 'coach', label: 'Coach', icon: Activity });
+        if (session.buddyName) s.push({ id: 'buddy', label: 'Buddy', icon: Users });
+        if (session.behavioralName) s.push({ id: 'flow', label: 'Flow', icon: Sparkles });
+
+        s.push({ id: 'final', label: 'Commit', icon: Rocket });
+        return s;
+    }, [session]);
 
     const nextStep = () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setStep(s => s + 1);
+        if (step < steps.length - 1) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setStep(s => s + 1);
+        }
     };
     const prevStep = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -228,6 +235,7 @@ export const PublicFeedback = () => {
     if (error || !session) return <ErrorMatrix navigate={navigate} />;
 
     const cohort = session.request.cohort;
+    const currentStepId = steps[step]?.id;
 
     return (
         <div className="min-h-screen bg-[#020617] text-slate-200 overflow-x-hidden font-sans selection:bg-primary/30">
@@ -261,7 +269,7 @@ export const PublicFeedback = () => {
                             <form onSubmit={handleSubmit}>
                                 <GlassCard className="p-8 lg:p-12 border-white/5 bg-slate-900/40 backdrop-blur-3xl shadow-[0_50px_100px_rgba(0,0,0,0.5)] rounded-[3rem] overflow-hidden">
                                     <AnimatePresence mode="wait">
-                                        {step === 0 && (
+                                        {currentStepId === 'auth' && (
                                             <motion.div key="st0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
                                                 <StepHeader title="Identity Verification" description="Identify your candidate profile to begin sync." icon={Lock} />
                                                 <div className="space-y-6">
@@ -286,7 +294,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 1 && (
+                                        {currentStepId === 'tech' && (
                                             <motion.div key="st1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Technical Assessment" description={`Review for ${session.trainerName || 'Not Assigned'}`} icon={Zap} />
                                                 <ToggleControl label="Was a technical session held this week?" value={formData.isTechnicalSessionHeld} onChange={v => setFormData(p => ({ ...p, isTechnicalSessionHeld: v }))} />
@@ -322,7 +330,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 2 && (
+                                        {currentStepId === 'logic' && (
                                             <motion.div key="st2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Mentorship Logic" description={`Mentoring review for ${session.mentorName || 'Not Assigned'}`} icon={BrainCircuit} />
                                                 <ToggleControl label="Did mentor sessions happen this week?" value={formData.isMentorSessionHeld} onChange={v => setFormData(p => ({ ...p, isMentorSessionHeld: v }))} />
@@ -340,7 +348,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 3 && (
+                                        {currentStepId === 'coach' && (
                                             <motion.div key="st3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Coach Performance" description={`Academy coaching review for ${session.coachName || 'Not Assigned'}`} icon={Activity} />
                                                 <GlassRating
@@ -355,7 +363,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 4 && (
+                                        {currentStepId === 'buddy' && (
                                             <motion.div key="st4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Buddy Network" description={`Peer connectivity via ${session.buddyName || 'Not Assigned'}`} icon={Users} />
                                                 <ToggleControl label="Did your buddy mentor connect?" value={formData.didBuddyMentorConnect} onChange={v => setFormData(p => ({ ...p, didBuddyMentorConnect: v }))} />
@@ -371,7 +379,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 5 && (
+                                        {currentStepId === 'flow' && (
                                             <motion.div key="st5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Behavioral Training" description={`Soft skills sync with ${session.behavioralName || 'Not Assigned'}`} icon={Sparkles} />
                                                 <ToggleControl label="Was behavioral sync active?" value={formData.isBehavioralSessionHeld} onChange={v => setFormData(p => ({ ...p, isBehavioralSessionHeld: v }))} />
@@ -389,7 +397,7 @@ export const PublicFeedback = () => {
                                             </motion.div>
                                         )}
 
-                                        {step === 6 && (
+                                        {currentStepId === 'final' && (
                                             <motion.div key="st6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
                                                 <StepHeader title="Final Synchronization" description="Lock in your overall weekly performance review." icon={Rocket} />
                                                 <div className="space-y-8">
