@@ -115,6 +115,11 @@ export interface FeedbackSession {
     mentorHours?: number;
     coachHours?: number;
     totalHours?: number;
+    trainerName?: string;
+    mentorName?: string;
+    coachName?: string;
+    buddyName?: string;
+    behavioralName?: string;
 }
 
 export const feedbackApi = {
@@ -124,6 +129,9 @@ export const feedbackApi = {
 
     getCohortRequests: (cohortId: number) =>
         api.get<FeedbackRequest[]>(`/feedback/cohort/${cohortId}/requests`),
+
+    deactivateRequest: (requestId: number) =>
+        api.delete(`/feedback/request/${requestId}`),
 
     getAnalytics: (cohortId: number) =>
         api.get<FeedbackAnalytics>(`/feedback/cohort/${cohortId}/analytics`),

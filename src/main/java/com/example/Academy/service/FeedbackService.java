@@ -6,11 +6,15 @@ import com.example.Academy.dto.feedback.FeedbackSessionDTO;
 import com.example.Academy.entity.Cohort;
 import com.example.Academy.entity.Feedback;
 import com.example.Academy.entity.FeedbackRequest;
+import com.example.Academy.entity.CohortTrainerMapping;
+import com.example.Academy.entity.CohortMentorMapping;
 import com.example.Academy.entity.WeeklySummary;
 import com.example.Academy.repository.CohortRepository;
 import com.example.Academy.repository.FeedbackRepository;
 import com.example.Academy.repository.FeedbackRequestRepository;
 import com.example.Academy.repository.WeeklySummaryRepository;
+import com.example.Academy.repository.CohortTrainerMappingRepository;
+import com.example.Academy.repository.CohortMentorMappingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +33,8 @@ public class FeedbackService {
     private final FeedbackRequestRepository requestRepository;
     private final CohortRepository cohortRepository;
     private final WeeklySummaryRepository weeklySummaryRepository;
+    private final CohortTrainerMappingRepository trainerMappingRepository;
+    private final CohortMentorMappingRepository mentorMappingRepository;
 
     @Transactional
     public FeedbackRequest createFeedbackRequest(FeedbackRequestCreateDTO dto) {
@@ -47,6 +53,14 @@ public class FeedbackService {
 
     public List<FeedbackRequest> getCohortRequests(Long cohortId) {
         return requestRepository.findByCohortId(cohortId);
+    }
+
+    @Transactional
+    public void deactivateFeedbackRequest(Long requestId) {
+        FeedbackRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+        request.setActive(false);
+        requestRepository.save(request);
     }
 
     @Transactional
@@ -138,6 +152,40 @@ public class FeedbackService {
             sessionDto.setMentorHours(BigDecimal.ZERO);
             sessionDto.setCoachHours(BigDecimal.ZERO);
             sessionDto.setTotalHours(BigDecimal.ZERO);
+        }
+
+        // Fetch Stakeholder Names from Mapping Tables (Real-time lookup)
+        Long cohortId = request.getCohort().getId();
+        List<CohortTrainerMapping> trainerMappings = trainerMappingRepository.findByCohortId(cohortId);
+        List<CohortMentorMapping> mentorMappings = mentorMappingRepository.findByCohortId(cohortId);
+
+        // Technical Trainer
+        trainerMappings.stream()
+                .filter(m -> m.getRole() == CohortTrainerMapping.Role.TRAINER)
+                .findFirst()
+                .ifPresent(m -> sessionDto.setTrainerName(m.getTrainer().getName()));
+
+        // Behavioral Trainer
+        trainerMappings.stream()
+                .filter(m -> m.getRole() == CohortTrainerMapping.Role.BH_TRAINER)
+                .findFirst()
+                .ifPresent(m -> sessionDto.setBehavioralName(m.getTrainer().getName()));
+
+        // Mentor
+        mentorMappings.stream()
+                .filter(m -> m.getRole() == CohortMentorMapping.Role.MENTOR)
+                .findFirst()
+                .ifPresent(m -> sessionDto.setMentorName(m.getMentor().getName()));
+
+        // Buddy Mentor
+        mentorMappings.stream()
+                .filter(m -> m.getRole() == CohortMentorMapping.Role.BUDDY_MENTOR)
+                .findFirst()
+                .ifPresent(m -> sessionDto.setBuddyName(m.getMentor().getName()));
+
+        // Coach (from Cohort entity)
+        if (request.getCohort().getCoach() != null) {
+            sessionDto.setCoachName(request.getCohort().getCoach().getName());
         }
 
         return sessionDto;

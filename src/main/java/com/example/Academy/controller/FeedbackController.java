@@ -35,6 +35,13 @@ public class FeedbackController {
         return ResponseEntity.ok(feedbackService.getCohortRequests(cohortId));
     }
 
+    @DeleteMapping("/request/{requestId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('COACH')")
+    public ResponseEntity<Void> deactivateRequest(@PathVariable Long requestId) {
+        feedbackService.deactivateFeedbackRequest(requestId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/cohort/{cohortId}/analytics")
     @PreAuthorize("hasAnyRole('ADMIN', 'COACH', 'LOCATION_LEAD')")
     public ResponseEntity<Map<String, Object>> getCohortAnalytics(@PathVariable Long cohortId) {

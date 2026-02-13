@@ -35,7 +35,7 @@ import {
   useAdditionalMentors
 } from '@/hooks/useCohortsBackend';
 import { useSubmitWeeklyEffort, useWeeklySummaries, useEffortsByCohortAndRange, useEffortsByCohort } from '@/hooks/useEffortsBackend';
-import { useCohortFeedbackRequests, useCohortFeedbackAnalytics, useCreateFeedbackRequest } from '@/hooks/useFeedback';
+import { useCohortFeedbackRequests, useCohortFeedbackAnalytics, useCreateFeedbackRequest, useDeactivateRequest } from '@/hooks/useFeedback';
 import { Cohort } from '@/integrations/backend/cohortApi';
 import { useCohortStore } from '@/stores/cohortStore';
 import { useTrainers, useCreateTrainer, useAssignTrainer, useUpdateTrainer, useDeleteTrainer, useUnassignTrainer, Trainer } from '@/hooks/useTrainers';
@@ -1134,6 +1134,9 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
   const createRequest = useCreateFeedbackRequest();
   const { data: requests = [] } = useCohortFeedbackRequests(parseInt(cohortId));
   const { data: analytics } = useCohortFeedbackAnalytics(parseInt(cohortId));
+  const deactivateRequest = useDeactivateRequest(parseInt(cohortId));
+
+  const hasActiveRequestForWeek = requests.some(req => req.weekNumber === weekNumber && req.active);
 
   const handleCreateRequest = () => {
     createRequest.mutate({
@@ -1294,15 +1297,22 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
                   className="input-premium w-full bg-white/5"
                 />
               </div>
-              <GradientButton
-                variant="primary"
-                className="w-full h-12 mt-4"
-                onClick={handleCreateRequest}
-                isLoading={createRequest.isPending}
-                icon={<Share2 className="h-4 w-4" />}
-              >
-                Generate Link
-              </GradientButton>
+              {!hasActiveRequestForWeek ? (
+                <GradientButton
+                  variant="primary"
+                  className="w-full h-12 mt-4"
+                  onClick={handleCreateRequest}
+                  isLoading={createRequest.isPending}
+                  icon={<Share2 className="h-4 w-4" />}
+                >
+                  Generate Link
+                </GradientButton>
+              ) : (
+                <div className="mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">Active Node Detected</p>
+                  <p className="text-[8px] text-slate-400 mt-1">Deactivate the existing Week {weekNumber} link to regenerate.</p>
+                </div>
+              )}
             </div>
           </div>
         </GlassCard>
@@ -1321,8 +1331,8 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
           </div>
 
           <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
-            {requests.length > 0 ? (
-              requests.sort((a, b) => b.weekNumber - a.weekNumber).map((req) => (
+            {requests.filter(r => r.active).length > 0 ? (
+              requests.filter(r => r.active).sort((a, b) => b.weekNumber - a.weekNumber).map((req) => (
                 <div key={req.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-primary/20 transition-all group">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary">
@@ -1350,6 +1360,16 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
                     >
                       <ExternalLink className="h-4 w-4" />
                     </button>
+                    {req.active && (
+                      <button
+                        onClick={() => deactivateRequest.mutate(req.id)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-all"
+                        title="Deactivate Link"
+                        disabled={deactivateRequest.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))

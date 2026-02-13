@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface FeedbackRequestRepository extends JpaRepository<FeedbackRequest, Long> {
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "cohort", "cohort.primaryTrainer",
-            "cohort.primaryMentor", "cohort.coach" })
+            "cohort.primaryMentor", "cohort.coach", "cohort.buddyMentor", "cohort.behavioralTrainer" })
     Optional<FeedbackRequest> findByToken(String token);
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = { "cohort" })

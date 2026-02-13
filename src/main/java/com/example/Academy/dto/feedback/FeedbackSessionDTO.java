@@ -11,4 +11,11 @@ public class FeedbackSessionDTO {
     private BigDecimal mentorHours;
     private BigDecimal coachHours; // We might use behavioral trainer hours here if coach is not tracked
     private BigDecimal totalHours;
+
+    // Stakeholder Names for Display
+    private String trainerName;
+    private String mentorName;
+    private String coachName;
+    private String buddyName;
+    private String behavioralName;
 }

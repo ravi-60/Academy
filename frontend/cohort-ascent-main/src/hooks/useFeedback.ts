@@ -62,3 +62,17 @@ export const useSubmitFeedback = () => {
         },
     });
 };
+
+export const useDeactivateRequest = (cohortId: number) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (requestId: number) => feedbackApi.deactivateRequest(requestId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['feedback_requests', cohortId] });
+            toast.success('Feedback link has been deactivated');
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to deactivate link');
+        },
+    });
+};
