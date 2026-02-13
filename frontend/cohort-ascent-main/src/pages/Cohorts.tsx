@@ -171,7 +171,7 @@ export const Cohorts = () => {
       trainingLocation: row.location || row.training_location,
       startDate: row.start_date,
       endDate: row.end_date || null,
-      coachEmail: row.coach_email,
+      coachEmail: row.assign_coach || row.coach_email,
       primaryTrainerEmail: row.primary_trainer_email,
     }));
 
@@ -515,6 +515,7 @@ export const Cohorts = () => {
         onUpload={handleBulkUpload}
         title="Import Cohorts"
         requiredColumns={['Cohort Code', 'Cohort Name', 'Business Unit', 'Skill', 'Location', 'Start Date', 'End Date']}
+        optionalColumns={['Assign Coach']}
       />
     </motion.div>
   );

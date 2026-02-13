@@ -71,4 +71,9 @@ public class NotificationService {
     public void markAsRead(Long id) {
         notificationRepository.deleteById(id);
     }
+
+    public void markAllAsRead(Long userId) {
+        List<Notification> notifications = notificationRepository.findByRecipientId(userId);
+        notificationRepository.deleteAll(notifications);
+    }
 }

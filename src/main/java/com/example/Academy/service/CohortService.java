@@ -73,13 +73,25 @@ public class CohortService {
                     .orElseThrow(() -> new RuntimeException("Coach not found with ID: " + request.getCoachId()));
             cohort.setCoach(coach);
         } else if (request.getCoachEmail() != null && !request.getCoachEmail().isEmpty()) {
-            User coach = userRepository.findByEmail(request.getCoachEmail())
-                    .orElseThrow(() -> new RuntimeException("Coach not found with email: " + request.getCoachEmail()));
-            if (coach.getRole() != User.Role.COACH) {
-                // Ideally fail, but maybe lenient? No, strict.
-                throw new RuntimeException("User " + request.getCoachEmail() + " is not a COACH");
+            String identifier = request.getCoachEmail().trim();
+            Optional<User> coachOpt = userRepository.findByEmail(identifier);
+
+            if (coachOpt.isEmpty()) {
+                // Try finding by Name since CSV might have names
+                coachOpt = userRepository.findByName(identifier);
             }
-            cohort.setCoach(coach);
+
+            if (coachOpt.isPresent()) {
+                User coach = coachOpt.get();
+                if (coach.getRole() == User.Role.COACH) {
+                    cohort.setCoach(coach);
+                } else {
+                    System.out.println("User " + identifier + " found but is not a COACH. Skipping assignment.");
+                }
+            } else {
+                System.out.println(
+                        "Coach not found with identifier (email/name): " + identifier + ". Skipping assignment.");
+            }
         }
 
         // SET PRIMARY TRAINER

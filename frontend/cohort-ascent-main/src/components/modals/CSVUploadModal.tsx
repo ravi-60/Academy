@@ -16,6 +16,7 @@ interface CSVUploadModalProps {
   onUpload: (data: Record<string, string>[]) => void;
   title: string;
   requiredColumns: string[];
+  optionalColumns?: string[];
   initialFile?: File | null;
 }
 
@@ -25,6 +26,7 @@ export const CSVUploadModal = ({
   onUpload,
   title,
   requiredColumns,
+  optionalColumns,
   initialFile,
 }: CSVUploadModalProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -176,6 +178,11 @@ export const CSVUploadModal = ({
                   {requiredColumns.map((col) => (
                     <span key={col} className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                       {col}
+                    </span>
+                  ))}
+                  {optionalColumns && optionalColumns.map((col) => (
+                    <span key={col} className="rounded-full bg-secondary/10 px-3 py-1 text-xs font-medium text-secondary border border-secondary/20">
+                      {col} (Optional)
                     </span>
                   ))}
                 </div>

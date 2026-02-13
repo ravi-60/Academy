@@ -96,4 +96,26 @@ public class NotificationController {
         notificationService.markAsRead(id);
         return ResponseEntity.ok().build();
     }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<Void> markAllAsRead() {
+        // Get user from context
+        String username = null;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            username = authentication.getName();
+        }
+
+        if (username == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Optional<User> user = userRepository.findByEmail(username);
+        if (user.isEmpty()) {
+            return ResponseEntity.status(404).build();
+        }
+
+        notificationService.markAllAsRead(user.get().getId());
+        return ResponseEntity.ok().build();
+    }
 }
