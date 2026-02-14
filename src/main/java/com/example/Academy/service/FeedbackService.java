@@ -2,6 +2,7 @@ package com.example.Academy.service;
 
 import com.example.Academy.dto.feedback.FeedbackRequestCreateDTO;
 import com.example.Academy.dto.feedback.FeedbackSubmissionDTO;
+import com.example.Academy.dto.feedback.FeedbackAnalyticsResponseDTO;
 import com.example.Academy.dto.feedback.FeedbackSessionDTO;
 import com.example.Academy.entity.Cohort;
 import com.example.Academy.entity.Feedback;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Map;
 
 @Service
@@ -191,6 +193,7 @@ public class FeedbackService {
         return sessionDto;
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getCohortAnalytics(Long cohortId) {
         List<Feedback> feedbackList = feedbackRepository.findByCohortId(cohortId);
 
@@ -214,6 +217,6 @@ public class FeedbackService {
                         "mentor", avgMentor,
                         "coach", avgCoach,
                         "overall", avgOverall),
-                "responses", feedbackList);
+                "responses", feedbackList.stream().map(FeedbackAnalyticsResponseDTO::new).collect(Collectors.toList()));
     }
 }

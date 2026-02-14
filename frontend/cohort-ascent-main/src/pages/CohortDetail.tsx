@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -27,6 +27,8 @@ import {
   Star,
   ShieldCheck,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   useCohorts,
@@ -1138,6 +1140,24 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
   const { data: analytics } = useCohortFeedbackAnalytics(parseInt(cohortId));
   const deactivateRequest = useDeactivateRequest(parseInt(cohortId));
 
+  const [exportScope, setExportScope] = useState<'latest' | 'specific'>('latest');
+  const [exportWeek, setExportWeek] = useState<number>(1);
+
+  // Update exportWeek default when analytics loads
+  useEffect(() => {
+    if (analytics?.responses?.length) {
+      const maxWeek = Math.max(...analytics.responses.map((r: any) => r.weekNumber));
+      setExportWeek(maxWeek);
+    }
+  }, [analytics]);
+
+  const [weekInput, setWeekInput] = useState(exportWeek.toString());
+
+  // Sync local input when exportWeek changes externally (e.g. arrows)
+  useEffect(() => {
+    setWeekInput(exportWeek.toString());
+  }, [exportWeek]);
+
   const hasActiveRequestForWeek = requests.some(req => req.weekNumber === weekNumber && req.active);
 
   const handleCreateRequest = () => {
@@ -1166,11 +1186,31 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
 
     let headers: string[] = [];
     let rows: any[] = [];
-    const filename = `${cohort.code}_${type}_feedback_${new Date().toISOString().split('T')[0]}.csv`;
+
+    // Determine target week
+    let targetWeek = exportWeek;
+    if (exportScope === 'latest') {
+      if (analytics.responses.length > 0) {
+        // Ensure weekNumber is treated as a number
+        targetWeek = Math.max(...analytics.responses.map((r: any) => Number(r.weekNumber)));
+      } else {
+        targetWeek = 1; // Default fallback
+      }
+    }
+
+    // Filter responses based on target week
+    const responsesToExport = analytics.responses.filter((r: any) => Number(r.weekNumber) === targetWeek);
+
+    if (responsesToExport.length === 0) {
+      toast.error(`No data available for Week ${targetWeek}`);
+      return;
+    }
+
+    const filename = `${cohort.code}_${type}_feedback_${exportScope}_W${targetWeek}_${new Date().toISOString().split('T')[0]}.csv`;
 
     const commonHeaders = [
       'Feedback Provider (Associate Name)', 'Feedback Receiver (Name)', 'Cohort Name',
-      'Location', 'SL', 'BU', 'SBU', 'Feedback Date'
+      'Location', 'SL', 'BU', 'SBU', 'Feedback Date', 'Token'
     ];
 
     const getCommonData = (resp: any, receiverName: string) => [
@@ -1183,7 +1223,8 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
       cohort.bu, // SL (using BU as placeholder)
       cohort.bu, // BU
       cohort.bu, // SBU (using BU as placeholder)
-      new Date(resp.createdAt).toLocaleDateString()
+      new Date(resp.createdAt).toLocaleDateString(),
+      resp.token || '' // Add Token
     ];
 
     switch (type) {
@@ -1196,12 +1237,12 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
           'On a scale of 1 to 5, how would you rate the trainer\'s technical knowledge of the topic, ability to address your doubts, and provide additional help on complex topics?',
           'On a scale of 1 to 5, how effective was the trainer in connecting with you during all the scheduled trainer connect sessions?',
           'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer covered all the concepts within the scheduled time without any delays"',
-          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer provided a recap of the Udemy learning sessions"?',
+          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer provided a  recap of the Udemy learning sessions"?',
           'On a scale of 1 to 5, how would you rate the trainer\'s provision of additional scenarios for skill application?',
           'Please give your feedback if you have scored below 3 for any of the above questions',
           'Aggregated Score'
         ];
-        rows = analytics.responses.map(r => {
+        rows = responsesToExport.map(r => {
           const avg = ((r.courseContentRating || 0) + (r.technicalKnowledgeRating || 0) + (r.trainerEngagementRating || 0) + (r.conceptsScheduleRating || 0) + (r.udemyRecapRating || 0) + (r.additionalScenarioRating || 0)) / 6;
           return [
             'Feedback Provider', // Static
@@ -1227,9 +1268,25 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
         });
         break;
       case 'mentor':
-        headers = [...commonHeaders, 'Was the Mentor session held this week?', 'Mentor guidance & practical input quality', 'Low score explanation feedback', 'Aggregated Score'];
-        rows = analytics.responses.map(r => [
-          ...getCommonData(r, cohort.primaryMentor?.name || 'Mentor'),
+        headers = [
+          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
+          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
+          'Was the Mentor session held this week?',
+          'Please reflect on the Mentor\'s ability to provide you guidance and practical inputs related to the course topics during this week?',
+          'Please give your feedback if you have scored below 3 for any of the above questions',
+          'Aggregated Score'
+        ];
+        rows = responsesToExport.map(r => [
+          'Feedback Provider', // Static
+          r.candidateName || 'Anonymous',
+          'Feedback Receiver', // Static
+          cohort.primaryMentor?.name || 'Mentor',
+          cohort.code,
+          cohort.trainingLocation,
+          cohort.bu, // SL
+          cohort.bu, // BU
+          cohort.bu, // SBU
+          new Date(r.createdAt).toLocaleDateString(),
           r.isMentorSessionHeld ? 'Yes' : 'No',
           r.mentorGuidanceRating || '',
           r.mentorLowScoreExplanation || '',
@@ -1237,18 +1294,50 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
         ]);
         break;
       case 'coach':
-        headers = [...commonHeaders, 'Coach effectiveness in guiding learning schedules & support', 'Low score explanation feedback', 'Aggregated Score'];
-        rows = analytics.responses.map(r => [
-          ...getCommonData(r, cohort.coach?.name || 'Coach'),
+        headers = [
+          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
+          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
+          'Please reflect if your GenC HR coach was effective in guiding you on day-to-day learning schedules, milestones, checkpoints, and other necessary support you required this week?',
+          'Please give your feedback if you have scored below 3 for the above question',
+          'Aggregated Score'
+        ];
+        rows = responsesToExport.map(r => [
+          'Feedback Provider', // Static
+          r.candidateName || 'Anonymous',
+          'Feedback Receiver', // Static
+          cohort.coach?.name || 'Coach',
+          cohort.code,
+          cohort.trainingLocation,
+          cohort.bu, // SL
+          cohort.bu, // BU
+          cohort.bu, // SBU
+          new Date(r.createdAt).toLocaleDateString(),
           r.coachEffectivenessRating || '',
           r.coachLowScoreExplanation || '',
           r.coachEffectivenessRating || ''
         ]);
         break;
       case 'buddy':
-        headers = [...commonHeaders, 'Did Buddy Mentor connect this week?', 'Were doubts clarified?', 'Buddy Mentor guidance effectiveness', 'Concerns or suggestions', 'Aggregated Score'];
-        rows = analytics.responses.map(r => [
-          ...getCommonData(r, cohort.buddyMentor?.name || 'Buddy Mentor'),
+        headers = [
+          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
+          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
+          'Did your Buddy Mentor connect with you this week',
+          'Were your doubts clarified by your Buddy Mentor',
+          'Please reflect whether the Buddy Mentor was able to provide you guidance that gives you the confidence to clear your stage 1 qualifier assessment.',
+          'Please share your concerns or suggestions regarding the Buddy Mentor Program',
+          'Aggregated Score'
+        ];
+        rows = responsesToExport.map(r => [
+          'Feedback Provider', // Static
+          r.candidateName || 'Anonymous',
+          'Feedback Receiver', // Static
+          cohort.buddyMentor?.name || 'Buddy Mentor',
+          cohort.code,
+          cohort.trainingLocation,
+          cohort.bu, // SL
+          cohort.bu, // BU
+          cohort.bu, // SBU
+          new Date(r.createdAt).toLocaleDateString(),
           r.didBuddyMentorConnect ? 'Yes' : 'No',
           r.wereDoubtsClarified ? 'Yes' : 'No',
           r.buddyMentorGuidanceRating || '',
@@ -1257,9 +1346,25 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
         ]);
         break;
       case 'behavioral':
-        headers = [...commonHeaders, 'Was behavioral session held this week?', 'Behavioral trainer delivery effectiveness', 'Low score explanation feedback', 'Aggregated Score'];
-        rows = analytics.responses.map(r => [
-          ...getCommonData(r, cohort.behavioralTrainer?.name || 'Behavioral Trainer'),
+        headers = [
+          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
+          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
+          'Was the Behavioral session held this week?',
+          'Please reflect on the behavioral trainer\'s ability to deliver course content',
+          'Please give your feedback if you have scored below 3 for the above question',
+          'Aggregated Score'
+        ];
+        rows = responsesToExport.map(r => [
+          'Feedback Provider', // Static
+          r.candidateName || 'Anonymous',
+          'Feedback Receiver', // Static
+          cohort.behavioralTrainer?.name || 'Behavioral Trainer',
+          cohort.code,
+          cohort.trainingLocation,
+          cohort.bu, // SL
+          cohort.bu, // BU
+          cohort.bu, // SBU
+          new Date(r.createdAt).toLocaleDateString(),
           r.isBehavioralSessionHeld ? 'Yes' : 'No',
           r.behavioralDeliveryRating || '',
           r.behavioralLowScoreExplanation || '',
@@ -1269,7 +1374,7 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
     }
 
     const csvContent = [
-      headers.join(','),
+      headers.map(h => `"${h}"`).join(','),
       ...rows.map(row => row.map((cell: any) => `"${cell}"`).join(','))
     ].join('\n');
 
@@ -1414,7 +1519,110 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
             <h3 className="text-xl font-bold text-foreground">Export Analytical Matrices</h3>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Generate client-requested CSV reports</p>
           </div>
-          <Download className="h-6 w-6 text-primary animate-bounce" />
+          <div className="flex items-center gap-4 bg-black/20 p-1.5 rounded-full border border-white/5 backdrop-blur-md">
+            {/* Scope Toggle */}
+            <div className="relative flex items-center bg-white/5 rounded-full p-1 border border-white/5">
+              <button
+                onClick={() => setExportScope('latest')}
+                className={cn(
+                  "relative z-10 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300",
+                  exportScope === 'latest' ? "text-white" : "text-slate-500 hover:text-slate-300"
+                )}
+              >
+                Latest
+                {exportScope === 'latest' && (
+                  <motion.div
+                    layoutId="scopeHighlight"
+                    className="absolute inset-0 bg-primary/20 border border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)] rounded-full -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+              <button
+                onClick={() => setExportScope('specific')}
+                className={cn(
+                  "relative z-10 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300",
+                  exportScope === 'specific' ? "text-white" : "text-slate-500 hover:text-slate-300"
+                )}
+              >
+                Specific Week
+                {exportScope === 'specific' && (
+                  <motion.div
+                    layoutId="scopeHighlight"
+                    className="absolute inset-0 bg-secondary/20 border border-secondary/30 shadow-[0_0_15px_rgba(var(--secondary-rgb),0.3)] rounded-full -z-10"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+            </div>
+
+            {/* Week Selector (Animate Presence) */}
+            <AnimatePresence mode="popLayout">
+              {exportScope === 'specific' && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, width: 'auto', scale: 1 }}
+                  exit={{ opacity: 0, width: 0, scale: 0.9 }}
+                  className="flex items-center gap-2 overflow-hidden"
+                >
+                  <div className="h-4 w-px bg-white/10 mx-1" /> {/* Divider */}
+
+                  <div className="flex items-center bg-white/5 rounded-full border border-white/5 px-2">
+                    <button
+                      onClick={() => setExportWeek(Math.max(1, exportWeek - 1))}
+                      className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    <div className="w-16 text-center select-none group relative">
+                      <span className="text-[8px] font-bold uppercase text-slate-500 block leading-none mb-0.5">Target</span>
+                      <div className="flex items-center justify-center">
+                        <span className="text-sm font-bold text-white font-mono leading-none">W</span>
+                        <input
+                          type="text"
+                          value={weekInput}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            // Allow only numbers and empty string
+                            if (val === '' || /^\d+$/.test(val)) {
+                              setWeekInput(val);
+                              const num = parseInt(val);
+                              if (!isNaN(num) && num >= 1 && num <= 52) {
+                                setExportWeek(num);
+                              }
+                            }
+                          }}
+                          onBlur={() => {
+                            const num = parseInt(weekInput);
+                            if (isNaN(num) || num < 1) {
+                              setWeekInput('1');
+                              setExportWeek(1);
+                            } else if (num > 52) {
+                              setWeekInput('52');
+                              setExportWeek(52);
+                            } else {
+                              // Reset to formatted number (removes leading zeros etc)
+                              setWeekInput(num.toString());
+                              setExportWeek(num);
+                            }
+                          }}
+                          className="w-6 bg-transparent text-sm font-bold text-white font-mono leading-none text-center focus:outline-none border-b border-white/20 focus:border-primary transition-colors p-0 m-0"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setExportWeek(Math.min(52, exportWeek + 1))}
+                      className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1468,18 +1676,101 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
           </GlassCard>
         ) : (
           <div className="grid gap-8 lg:grid-cols-2">
+            {/* Latest Week Rating Card */}
+            <GlassCard className="p-8 border-white/10 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Sparkles className="h-24 w-24 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2 relative z-10">
+                <Zap className="h-5 w-5 text-neon-blue" />
+                Latest Week Rating
+              </h3>
+
+              <div className="relative z-10">
+                {(() => {
+                  // Calculate latest week stats
+                  if (!analytics.responses.length) return <p className="text-sm text-slate-500">No data available.</p>;
+
+                  const latestWeek = Math.max(...analytics.responses.map(r => r.weekNumber));
+                  const latestResponses = analytics.responses.filter(r => r.weekNumber === latestWeek);
+
+                  // Helper to get average of valid numbers
+                  const getAvg = (vals: (number | null | undefined)[]) => {
+                    const valid = vals.filter(v => typeof v === 'number' && v > 0) as number[];
+                    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : 0;
+                  };
+
+                  // Calculate category averages for latest week
+                  const latestStats = {
+                    technical: getAvg(latestResponses.flatMap(r => [
+                      r.courseContentRating, r.technicalKnowledgeRating, r.trainerEngagementRating,
+                      r.conceptsScheduleRating, r.udemyRecapRating, r.additionalScenarioRating
+                    ])),
+                    mentor: getAvg(latestResponses.map(r => r.mentorGuidanceRating)),
+                    coach: getAvg(latestResponses.map(r => r.coachEffectivenessRating)),
+                    buddy: getAvg(latestResponses.map(r => r.buddyMentorGuidanceRating)),
+                    overall: getAvg(latestResponses.map(r => r.overallSatisfaction))
+                  };
+
+                  return (
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                          <span className="text-xs font-bold text-neon-blue uppercase tracking-widest">Week {latestWeek} Analysis</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{latestResponses.length} Responses</span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {[
+                          { label: 'Technical Trainer', value: latestStats.technical, color: 'from-primary/40 to-primary' },
+                          { label: 'Mentor Support', value: latestStats.mentor, color: 'from-purple-500/40 to-purple-500' },
+                          { label: 'Latest Week Review', value: latestStats.coach, color: 'from-neon-blue/40 to-neon-blue' },
+                          { label: 'Buddy Mentor', value: latestStats.buddy, color: 'from-amber-500/40 to-amber-500' },
+                          { label: 'Overall', value: latestStats.overall, color: 'from-green-500/40 to-green-500' },
+                        ].map((stat, i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
+                              <span className="text-slate-400">{stat.label}</span>
+                              <span className="text-white">{stat.value.toFixed(1)} / 5.0</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(stat.value / 5) * 100}%` }}
+                                transition={{ duration: 1, delay: i * 0.1 }}
+                                className={cn("h-full bg-gradient-to-r rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", stat.color)}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </GlassCard>
+
             {/* Rating Matrix */}
             <GlassCard className="p-8 border-white/10">
               <h3 className="text-lg font-bold text-foreground mb-8 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" />
-                Rating Vector Analysis
+                Overall Rating Analysis
               </h3>
               <div className="space-y-8">
                 {[
                   { label: 'Technical Trainer', value: analytics.averages.trainer, color: 'from-primary/40 to-primary' },
-                  { label: 'Mentor Support', value: analytics.averages.mentor, color: 'from-secondary/40 to-secondary' },
-                  { label: 'Coach Interaction', value: analytics.averages.coach, color: 'from-neon-blue/40 to-neon-blue' },
-                  { label: 'Overall Satisfaction', value: analytics.averages.overall, color: 'from-success/40 to-success' },
+                  { label: 'Mentor Support', value: analytics.averages.mentor, color: 'from-purple-500/40 to-purple-500' },
+                  { label: 'Latest Week Review', value: analytics.averages.coach, color: 'from-neon-blue/40 to-neon-blue' },
+                  {
+                    label: 'Buddy Mentor',
+                    value: (() => {
+                      const valid = analytics.responses.map((r: any) => r.buddyMentorGuidanceRating).filter((v: any) => typeof v === 'number' && v > 0);
+                      return valid.length ? valid.reduce((a: any, b: any) => a + b, 0) / valid.length : 0;
+                    })(),
+                    color: 'from-amber-500/40 to-amber-500'
+                  },
+                  { label: 'Overall', value: analytics.averages.overall, color: 'from-green-500/40 to-green-500' },
                 ].map((stat, i) => (
                   <div key={i} className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
@@ -1499,52 +1790,7 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
               </div>
             </GlassCard>
 
-            {/* Insights Terminal */}
-            <GlassCard className="p-8 border-white/10">
-              <h3 className="text-lg font-bold text-foreground mb-8 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-secondary" />
-                Raw Insights Terminal
-              </h3>
-              <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-4">
-                {analytics.responses.slice().reverse().map((resp) => (
-                  <div key={resp.id} className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-3 hover:bg-white/10 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-lg bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">
-                            W{resp.weekNumber}
-                          </div>
-                          <span className="text-[10px] font-black uppercase text-slate-500">{new Date(resp.createdAt).toLocaleDateString()}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-bold text-primary">
-                            {resp.candidateName?.charAt(0) || '?'}
-                          </div>
-                          <span className="text-xs font-bold text-white leading-none">{resp.candidateName || 'Anonymous'}</span>
-                          <span className="text-[9px] text-slate-500 font-mono leading-none">({resp.employeeId || 'ID: NA'})</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-1 self-start pt-1">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className={cn("h-2.5 w-2.5", s <= resp.overallSatisfaction ? "text-primary fill-primary" : "text-slate-700")} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-300 italic leading-relaxed">
-                        "{resp.technicalLowScoreExplanation || 'No specific technical feedback provided.'}"
-                      </p>
-                      {resp.buddyMentorSuggestions && (
-                        <div className="pt-2 border-t border-white/5">
-                          <p className="text-[10px] font-bold uppercase text-primary mb-1">Buddy Mentor Suggestions:</p>
-                          <p className="text-xs text-slate-400">{resp.buddyMentorSuggestions}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
+            {/* Insights Terminal Removed */}
           </div>
         )}
       </div>

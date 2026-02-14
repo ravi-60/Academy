@@ -21,6 +21,7 @@ export interface FeedbackRequest {
 }
 
 export interface Feedback {
+    token: string;
     id: number;
     weekNumber: number;
 

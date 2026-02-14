@@ -102,8 +102,8 @@ const StepHeader = ({ title, description, icon: Icon }: any) => (
     </div>
 );
 
-const GlassRating = ({ label, value, onChange, description, explanationValue, onExplanationChange }: any) => {
-    const showLowScoreField = value > 0 && value < 3;
+const GlassRating = ({ label, value, onChange, description, explanationValue, onExplanationChange, suppressExplanation = false }: any) => {
+    const showLowScoreField = !suppressExplanation && value > 0 && value < 3;
     return (
         <div className="group relative p-6 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all duration-300">
             <div className="space-y-4">
@@ -305,52 +305,78 @@ export const PublicFeedback = () => {
                                                             value={formData.courseContentRating}
                                                             onChange={v => setFormData(p => ({ ...p, courseContentRating: v }))}
                                                             description="On a scale of 1 to 5, how likely are you to agree with the statement 'The course content was delivered in an effective way for me to learn'"
-
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
                                                         <GlassRating
                                                             label="Technical Domain"
                                                             value={formData.technicalKnowledgeRating}
                                                             onChange={v => setFormData(p => ({ ...p, technicalKnowledgeRating: v }))}
                                                             description="On a scale of 1 to 5, how would you rate the trainer's technical knowledge of the topic, ability to address your doubts, and provide additional help on complex topics?"
-
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
                                                         <GlassRating
                                                             label="Participant Interaction"
                                                             value={formData.trainerEngagementRating}
                                                             onChange={v => setFormData(p => ({ ...p, trainerEngagementRating: v }))}
                                                             description="On a scale of 1 to 5, how effective was the trainer in connecting with you during all the scheduled trainer connect sessions?"
-
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
                                                         <GlassRating
                                                             label="Schedule Management"
                                                             value={formData.conceptsScheduleRating}
                                                             onChange={v => setFormData(p => ({ ...p, conceptsScheduleRating: v }))}
                                                             description="On a scale of 1 to 5, how likely are you to agree with the statement 'The trainer covered all the concepts within the scheduled time without any delays'"
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
                                                         <GlassRating
                                                             label="Udemy Recap"
                                                             value={formData.udemyRecapRating}
                                                             onChange={v => setFormData(p => ({ ...p, udemyRecapRating: v }))}
                                                             description="On a scale of 1 to 5, how likely are you to agree with the statement 'The trainer provided a recap of the Udemy learning sessions'?"
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
                                                         <GlassRating
                                                             label="Additional Scenarios"
                                                             value={formData.additionalScenarioRating}
                                                             onChange={v => setFormData(p => ({ ...p, additionalScenarioRating: v }))}
                                                             description="On a scale of 1 to 5, how would you rate the trainer's provision of additional scenarios for skill application?"
-                                                            explanationValue={formData.technicalLowScoreExplanation}
-                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                            suppressExplanation={true}
                                                         />
+
+                                                        {/* Consolidated Low Score Explanation */}
+                                                        <AnimatePresence>
+                                                            {([
+                                                                formData.courseContentRating,
+                                                                formData.technicalKnowledgeRating,
+                                                                formData.trainerEngagementRating,
+                                                                formData.conceptsScheduleRating,
+                                                                formData.udemyRecapRating,
+                                                                formData.additionalScenarioRating
+                                                            ].some(r => r > 0 && r < 3)) && (
+                                                                    <motion.div
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        className="overflow-hidden pt-2"
+                                                                    >
+                                                                        <div className="p-6 rounded-3xl bg-destructive/5 border border-destructive/10 space-y-3">
+                                                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-destructive/80 flex items-center gap-2">
+                                                                                <MessageSquare className="h-3.5 w-3.5" />
+                                                                                Constructive Feedback Required
+                                                                            </label>
+                                                                            <p className="text-xs text-slate-400">
+                                                                                You rated one or more technical aspects below average. Please help us improve by providing specific details.
+                                                                            </p>
+                                                                            <textarea
+                                                                                value={formData.technicalLowScoreExplanation}
+                                                                                onChange={e => setFormData(p => ({ ...p, technicalLowScoreExplanation: e.target.value }))}
+                                                                                placeholder="What specifically could be improved? (e.g., 'Recaps were too short', 'Pacing was too fast')"
+                                                                                className="w-full h-24 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-xs text-white placeholder:text-destructive/40 outline-none focus:border-destructive/50 transition-all resize-none"
+                                                                            />
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                        </AnimatePresence>
                                                     </div>
                                                 )}
                                                 <NavigationButtons onPrev={prevStep} onNext={nextStep} disableNext={formData.isTechnicalSessionHeld && (!formData.courseContentRating || !formData.technicalKnowledgeRating || !formData.trainerEngagementRating)} />
@@ -363,10 +389,10 @@ export const PublicFeedback = () => {
                                                 <ToggleControl label="Did mentor sessions happen this week?" value={formData.isMentorSessionHeld} onChange={v => setFormData(p => ({ ...p, isMentorSessionHeld: v }))} />
                                                 {formData.isMentorSessionHeld && (
                                                     <GlassRating
-                                                        label="Mentorship Impact"
+                                                        label="Guidance Quality"
                                                         value={formData.mentorGuidanceRating}
                                                         onChange={v => setFormData(p => ({ ...p, mentorGuidanceRating: v }))}
-                                                        description="Quality of practical inputs"
+                                                        description="Please reflect on the Mentor's ability to provide you guidance and practical inputs related to the course topics during this week?"
                                                         explanationValue={formData.mentorLowScoreExplanation}
                                                         onExplanationChange={v => setFormData(p => ({ ...p, mentorLowScoreExplanation: v }))}
                                                     />
@@ -382,7 +408,7 @@ export const PublicFeedback = () => {
                                                     label="Coach Effectiveness"
                                                     value={formData.coachEffectivenessRating}
                                                     onChange={v => setFormData(p => ({ ...p, coachEffectivenessRating: v }))}
-                                                    description="Learning schedule support & methodology"
+                                                    description="Please reflect if your GenC HR coach was effective in guiding you on day-to-day learning schedules, milestones, checkpoints, and other necessary support you required this week?"
                                                     explanationValue={formData.coachLowScoreExplanation}
                                                     onExplanationChange={v => setFormData(p => ({ ...p, coachLowScoreExplanation: v }))}
                                                 />
@@ -393,29 +419,51 @@ export const PublicFeedback = () => {
                                         {currentStepId === 'buddy' && (
                                             <motion.div key="st4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Buddy Network" description={`Peer connectivity via ${session.buddyName || 'Not Assigned'}`} icon={Users} />
-                                                <ToggleControl label="Did your buddy mentor connect?" value={formData.didBuddyMentorConnect} onChange={v => setFormData(p => ({ ...p, didBuddyMentorConnect: v }))} />
-                                                <GlassRating
-                                                    label="Connection Value"
-                                                    value={formData.buddyMentorGuidanceRating}
-                                                    onChange={v => setFormData(p => ({ ...p, buddyMentorGuidanceRating: v }))}
-                                                    description="Impact of peer-to-peer logic clearing"
-                                                    explanationValue={formData.buddyMentorSuggestions}
-                                                    onExplanationChange={v => setFormData(p => ({ ...p, buddyMentorSuggestions: v }))}
+                                                <NavigableToggle label="Did your Buddy Mentor connect with you this week?" value={formData.didBuddyMentorConnect} onChange={v => setFormData(p => ({ ...p, didBuddyMentorConnect: v }))} />
+                                                {formData.didBuddyMentorConnect && (
+                                                    <>
+                                                        <NavigableToggle label="Were your doubts clarified by your Buddy Mentor?" value={formData.wereDoubtsClarified} onChange={v => setFormData(p => ({ ...p, wereDoubtsClarified: v }))} />
+                                                        <GlassRating
+                                                            label="Guidance & Confidence"
+                                                            value={formData.buddyMentorGuidanceRating}
+                                                            onChange={v => setFormData(p => ({ ...p, buddyMentorGuidanceRating: v }))}
+                                                            description="Please reflect whether the Buddy Mentor was able to provide you guidance that gives you the confidence to clear your stage 1 qualifier assessment."
+                                                            suppressExplanation={true}
+                                                        />
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/70 ml-1">Concerns or Suggestions</label>
+                                                            <textarea
+                                                                value={formData.buddyMentorSuggestions}
+                                                                onChange={e => setFormData(p => ({ ...p, buddyMentorSuggestions: e.target.value }))}
+                                                                placeholder="Please share your concerns or suggestions regarding the Buddy Mentor Program"
+                                                                className="w-full h-24 p-4 bg-white/5 border border-white/10 rounded-2xl text-xs text-white placeholder:text-slate-500 outline-none focus:border-primary/50 transition-all resize-none"
+                                                            />
+                                                        </div>
+                                                    </>
+                                                )}
+                                                <NavigationButtons
+                                                    onPrev={prevStep}
+                                                    onNext={nextStep}
+                                                    disableNext={
+                                                        formData.didBuddyMentorConnect && (
+                                                            !formData.buddyMentorGuidanceRating ||
+                                                            !formData.buddyMentorSuggestions?.trim()
+                                                        )
+                                                    }
                                                 />
-                                                <NavigationButtons onPrev={prevStep} onNext={nextStep} disableNext={!formData.buddyMentorGuidanceRating} />
                                             </motion.div>
                                         )}
 
                                         {currentStepId === 'flow' && (
                                             <motion.div key="st5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
                                                 <StepHeader title="Behavioral Training" description={`Soft skills sync with ${session.behavioralName || 'Not Assigned'}`} icon={Sparkles} />
-                                                <ToggleControl label="Was behavioral sync active?" value={formData.isBehavioralSessionHeld} onChange={v => setFormData(p => ({ ...p, isBehavioralSessionHeld: v }))} />
+                                                <NavigableToggle label="Was the Behavioral session held this week?" value={formData.isBehavioralSessionHeld} onChange={v => setFormData(p => ({ ...p, isBehavioralSessionHeld: v }))} />
                                                 {formData.isBehavioralSessionHeld && (
                                                     <GlassRating
-                                                        label="Soft Skill Flow"
+                                                        label="Delivery Effectiveness"
                                                         value={formData.behavioralDeliveryRating}
                                                         onChange={v => setFormData(p => ({ ...p, behavioralDeliveryRating: v }))}
-                                                        description="Communication and delivery effectiveness"
+                                                        description="Please reflect on the behavioral trainer's ability to deliver course content"
                                                         explanationValue={formData.behavioralLowScoreExplanation}
                                                         onExplanationChange={v => setFormData(p => ({ ...p, behavioralLowScoreExplanation: v }))}
                                                     />
@@ -467,6 +515,34 @@ const FinalSuccessView = ({ navigate, token, cohortCode }: any) => {
         </motion.div>
     );
 };
+
+const NavigableToggle = ({ label, value, onChange }: any) => (
+    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+        <span className="text-xs font-medium text-slate-300">{label}</span>
+        <div className="flex bg-black/20 p-1 rounded-lg">
+            <button
+                type="button"
+                onClick={() => onChange(true)}
+                className={cn(
+                    "px-4 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                    value ? "bg-primary text-slate-950 shadow-glow-cyan" : "text-slate-500 hover:text-slate-300"
+                )}
+            >
+                Yes
+            </button>
+            <button
+                type="button"
+                onClick={() => onChange(false)}
+                className={cn(
+                    "px-4 py-1.5 rounded-md text-[10px] font-bold transition-all",
+                    !value ? "bg-destructive text-white shadow-glow-red" : "text-slate-500 hover:text-slate-300"
+                )}
+            >
+                No
+            </button>
+        </div>
+    </div>
+);
 
 const ToggleControl = ({ label, value, onChange }: any) => (
     <div className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/5">
