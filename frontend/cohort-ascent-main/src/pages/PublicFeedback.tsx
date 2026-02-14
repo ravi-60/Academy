@@ -304,7 +304,8 @@ export const PublicFeedback = () => {
                                                             label="Instruction Quality"
                                                             value={formData.courseContentRating}
                                                             onChange={v => setFormData(p => ({ ...p, courseContentRating: v }))}
-                                                            description="Clarity and depth of content delivered"
+                                                            description="On a scale of 1 to 5, how likely are you to agree with the statement 'The course content was delivered in an effective way for me to learn'"
+
                                                             explanationValue={formData.technicalLowScoreExplanation}
                                                             onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
                                                         />
@@ -312,7 +313,8 @@ export const PublicFeedback = () => {
                                                             label="Technical Domain"
                                                             value={formData.technicalKnowledgeRating}
                                                             onChange={v => setFormData(p => ({ ...p, technicalKnowledgeRating: v }))}
-                                                            description="Expertise and doubt resolution efficiency"
+                                                            description="On a scale of 1 to 5, how would you rate the trainer's technical knowledge of the topic, ability to address your doubts, and provide additional help on complex topics?"
+
                                                             explanationValue={formData.technicalLowScoreExplanation}
                                                             onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
                                                         />
@@ -320,7 +322,32 @@ export const PublicFeedback = () => {
                                                             label="Participant Interaction"
                                                             value={formData.trainerEngagementRating}
                                                             onChange={v => setFormData(p => ({ ...p, trainerEngagementRating: v }))}
-                                                            description="Engagement and active participation"
+                                                            description="On a scale of 1 to 5, how effective was the trainer in connecting with you during all the scheduled trainer connect sessions?"
+
+                                                            explanationValue={formData.technicalLowScoreExplanation}
+                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                        />
+                                                        <GlassRating
+                                                            label="Schedule Management"
+                                                            value={formData.conceptsScheduleRating}
+                                                            onChange={v => setFormData(p => ({ ...p, conceptsScheduleRating: v }))}
+                                                            description="On a scale of 1 to 5, how likely are you to agree with the statement 'The trainer covered all the concepts within the scheduled time without any delays'"
+                                                            explanationValue={formData.technicalLowScoreExplanation}
+                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                        />
+                                                        <GlassRating
+                                                            label="Udemy Recap"
+                                                            value={formData.udemyRecapRating}
+                                                            onChange={v => setFormData(p => ({ ...p, udemyRecapRating: v }))}
+                                                            description="On a scale of 1 to 5, how likely are you to agree with the statement 'The trainer provided a recap of the Udemy learning sessions'?"
+                                                            explanationValue={formData.technicalLowScoreExplanation}
+                                                            onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
+                                                        />
+                                                        <GlassRating
+                                                            label="Additional Scenarios"
+                                                            value={formData.additionalScenarioRating}
+                                                            onChange={v => setFormData(p => ({ ...p, additionalScenarioRating: v }))}
+                                                            description="On a scale of 1 to 5, how would you rate the trainer's provision of additional scenarios for skill application?"
                                                             explanationValue={formData.technicalLowScoreExplanation}
                                                             onExplanationChange={v => setFormData(p => ({ ...p, technicalLowScoreExplanation: v }))}
                                                         />

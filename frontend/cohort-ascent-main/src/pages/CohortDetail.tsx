@@ -1129,6 +1129,8 @@ const ReportsTab = ({ cohortId }: ReportsTabProps) => {
 };
 
 const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort }) => {
+  const { data: trainers = [] } = useTrainers(cohortId);
+  const { data: mentors = [] } = useMentors(cohortId);
   const [weekNumber, setWeekNumber] = useState(1);
   const [expiryDays, setExpiryDays] = useState(7);
   const createRequest = useCreateFeedbackRequest();
@@ -1172,23 +1174,46 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
     ];
 
     const getCommonData = (resp: any, receiverName: string) => [
+      'Feedback Provider', // Header placeholder
       resp.candidateName || 'Anonymous',
+      'Feedback Receiver', // Header placeholder
       receiverName,
       cohort.code,
       cohort.trainingLocation,
-      cohort.bu,
-      cohort.bu,
-      cohort.bu,
+      cohort.bu, // SL (using BU as placeholder)
+      cohort.bu, // BU
+      cohort.bu, // SBU (using BU as placeholder)
       new Date(resp.createdAt).toLocaleDateString()
     ];
 
     switch (type) {
       case 'tech':
-        headers = [...commonHeaders, 'Was the technical session held this week?', 'Course content delivered effectively', 'Trainer technical knowledge', 'Trainer engagement', 'Concepts covered within schedule', 'Udemy recap provided', 'Additional scenario support', 'Low score explanation feedback', 'Aggregated Score'];
+        headers = [
+          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
+          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
+          'Was the technical session held this week?',
+          'On a scale of 1 to 5, how likely are you to agree with the statement "The course content was delivered in an effective way for me to learn"',
+          'On a scale of 1 to 5, how would you rate the trainer\'s technical knowledge of the topic, ability to address your doubts, and provide additional help on complex topics?',
+          'On a scale of 1 to 5, how effective was the trainer in connecting with you during all the scheduled trainer connect sessions?',
+          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer covered all the concepts within the scheduled time without any delays"',
+          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer provided a recap of the Udemy learning sessions"?',
+          'On a scale of 1 to 5, how would you rate the trainer\'s provision of additional scenarios for skill application?',
+          'Please give your feedback if you have scored below 3 for any of the above questions',
+          'Aggregated Score'
+        ];
         rows = analytics.responses.map(r => {
           const avg = ((r.courseContentRating || 0) + (r.technicalKnowledgeRating || 0) + (r.trainerEngagementRating || 0) + (r.conceptsScheduleRating || 0) + (r.udemyRecapRating || 0) + (r.additionalScenarioRating || 0)) / 6;
           return [
-            ...getCommonData(r, cohort.primaryTrainer?.name || 'Technical Trainer'),
+            'Feedback Provider', // Static
+            r.candidateName || 'Anonymous',
+            'Feedback Receiver', // Static
+            cohort.primaryTrainer?.name || 'Technical Trainer',
+            cohort.code,
+            cohort.trainingLocation,
+            cohort.bu, // SL
+            cohort.bu, // BU
+            cohort.bu, // SBU
+            new Date(r.createdAt).toLocaleDateString(),
             r.isTechnicalSessionHeld ? 'Yes' : 'No',
             r.courseContentRating || '',
             r.technicalKnowledgeRating || '',
@@ -1394,12 +1419,12 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { id: 'tech', label: 'Tech Trainer', icon: Zap, color: 'hover:bg-primary/20 hover:border-primary/50' },
-            { id: 'mentor', label: 'Mentor', icon: Users, color: 'hover:bg-secondary/20 hover:border-secondary/50' },
-            { id: 'coach', label: 'Academy Coach', icon: ShieldCheck, color: 'hover:bg-neon-blue/20 hover:border-neon-blue/50' },
-            { id: 'buddy', label: 'Buddy Mentor', icon: MessageSquare, color: 'hover:bg-amber-500/20 hover:border-amber-500/50' },
-            { id: 'behavioral', label: 'Soft Skills', icon: Sparkles, color: 'hover:bg-success/20 hover:border-success/50' },
-          ].map((type) => (
+            { id: 'tech', label: 'Tech Trainer', icon: Zap, color: 'hover:bg-primary/20 hover:border-primary/50', check: !!cohort.primaryTrainer || trainers.some((t: any) => t.type?.toLowerCase() === 'technical') },
+            { id: 'mentor', label: 'Mentor', icon: Users, color: 'hover:bg-secondary/20 hover:border-secondary/50', check: !!cohort.primaryMentor || mentors.some((m: any) => m.type?.toLowerCase() === 'mentor') },
+            { id: 'coach', label: 'Academy Coach', icon: ShieldCheck, color: 'hover:bg-neon-blue/20 hover:border-neon-blue/50', check: !!cohort.coach },
+            { id: 'buddy', label: 'Buddy Mentor', icon: MessageSquare, color: 'hover:bg-amber-500/20 hover:border-amber-500/50', check: !!cohort.buddyMentor || mentors.some((m: any) => m.type?.toLowerCase() === 'buddy' || m.type?.toLowerCase() === 'buddy_mentor') },
+            { id: 'behavioral', label: 'Soft Skills', icon: Sparkles, color: 'hover:bg-success/20 hover:border-success/50', check: !!cohort.behavioralTrainer || trainers.some((t: any) => t.type?.toLowerCase() === 'behavioral' || t.type?.toLowerCase() === 'bh_trainer') },
+          ].filter(t => t.check).map((type) => (
             <button
               key={type.id}
               onClick={() => handleStakeholderExport(type.id as any)}
