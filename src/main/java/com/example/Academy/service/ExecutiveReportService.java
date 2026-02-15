@@ -147,8 +147,14 @@ public class ExecutiveReportService {
                                                 .mentorName(e.getTrainerMentor() != null
                                                                 ? e.getTrainerMentor().getName()
                                                                 : "N/A")
-                                                .role(e.getRole().name().replace("_", " "))
-                                                .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "VILT" : "ILT")
+                                                .role(switch (e.getRole()) {
+                                                        case TRAINER -> "SME";
+                                                        case MENTOR -> "Mentor";
+                                                        case BUDDY_MENTOR -> "Buddy Mentor";
+                                                        case BH_TRAINER -> "MFRP Contributor";
+                                                })
+                                                .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "Virtual"
+                                                                : "In-Person")
                                                 .reasonVirtual(e.getReasonVirtual() != null ? e.getReasonVirtual()
                                                                 : "N/A")
                                                 .areaOfVisit(e.getAreaOfWork())

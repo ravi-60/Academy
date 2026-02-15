@@ -25,6 +25,8 @@ const cohortSchema = z.object({
   code: z.string().min(1, 'Cohort code is required'),
   name: z.string().min(2, 'Name is required'),
   bu: z.string().min(1, 'Business unit is required'),
+  sl: z.string().min(1, 'Service line is required'),
+  sbu: z.string().min(1, 'Strategic Business Unit is required'),
   skill: z.string().min(1, 'Skill is required'),
   location: z.string().min(1, 'Location is required'),
   coachId: z.string().optional(),
@@ -64,6 +66,8 @@ export const AddCohortModal = ({
       code: '',
       name: '',
       bu: '',
+      sl: '',
+      sbu: '',
       skill: '',
       location: '',
       coachId: '',
@@ -82,6 +86,8 @@ export const AddCohortModal = ({
         code: initialData.code || '',
         name: initialData.name || '',
         bu: initialData.bu || '',
+        sl: initialData.sl || '',
+        sbu: initialData.sbu || '',
         skill: initialData.skill || '',
         location: initialData.location || '',
         coachId: initialData.coachId || '',
@@ -94,6 +100,8 @@ export const AddCohortModal = ({
         code: '',
         name: '',
         bu: '',
+        sl: '',
+        sbu: '',
         skill: '',
         location: '',
         coachId: '',
@@ -109,6 +117,8 @@ export const AddCohortModal = ({
     const payload: any = {
       code: data.code,
       bu: buValue === 'OTHER' ? customBU : data.bu,
+      sl: data.sl,
+      sbu: data.sbu,
       skill: data.skill,
       trainingLocation: data.location, // Map location -> trainingLocation
       startDate: data.start_date, // Map start_date -> startDate
@@ -242,6 +252,34 @@ export const AddCohortModal = ({
                           />
                         )}
                       </>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Service Line (SL)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="SL Name" className="input-premium" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sbu"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Strategic Business Unit (SBU)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="SBU Name" className="input-premium" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

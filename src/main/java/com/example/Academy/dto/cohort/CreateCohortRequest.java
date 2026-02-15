@@ -16,6 +16,9 @@ public class CreateCohortRequest {
     @NotBlank
     private String skill;
 
+    private String sl;
+    private String sbu;
+
     @NotBlank
     private String trainingLocation;
 
@@ -37,4 +40,19 @@ public class CreateCohortRequest {
     private Long primaryMentorId;
     private Long buddyMentorId;
 
+    public String getSl() {
+        return sl;
+    }
+
+    public void setSl(String sl) {
+        this.sl = sl;
+    }
+
+    public String getSbu() {
+        return sbu;
+    }
+
+    public void setSbu(String sbu) {
+        this.sbu = sbu;
+    }
 }

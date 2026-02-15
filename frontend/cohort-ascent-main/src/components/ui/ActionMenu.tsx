@@ -26,7 +26,7 @@ export const ActionMenu = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button 
+        <button
           className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           onClick={(e) => e.stopPropagation()}
         >

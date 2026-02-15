@@ -12,6 +12,8 @@ import {
   Mail,
   Phone,
   Plus,
+  Send,
+  FileSpreadsheet,
   UserPlus,
   Upload,
   Download,
@@ -38,11 +40,12 @@ import {
 } from '@/hooks/useCohortsBackend';
 import { useSubmitWeeklyEffort, useWeeklySummaries, useEffortsByCohortAndRange, useEffortsByCohort } from '@/hooks/useEffortsBackend';
 import { useCohortFeedbackRequests, useCohortFeedbackAnalytics, useCreateFeedbackRequest, useDeactivateRequest } from '@/hooks/useFeedback';
-import { Cohort } from '@/integrations/backend/cohortApi';
+import { Cohort, cohortApi } from '@/integrations/backend/cohortApi';
 import { useCohortStore } from '@/stores/cohortStore';
 import { useTrainers, useCreateTrainer, useAssignTrainer, useUpdateTrainer, useDeleteTrainer, useUnassignTrainer, Trainer } from '@/hooks/useTrainers';
 import { useMentors, useCreateMentor, useAssignMentor, useUpdateMentor, useDeleteMentor, useUnassignMentor, Mentor } from '@/hooks/useMentors';
 import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate, useBulkCreateCandidates, Candidate } from '@/hooks/useCandidates';
+import { FEEDBACK_EXPORT_CONFIG, FeedbackType } from '@/utils/feedbackExportConfig';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { ActionMenu } from '@/components/ui/ActionMenu';
@@ -1184,8 +1187,7 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
       return;
     }
 
-    let headers: string[] = [];
-    let rows: any[] = [];
+
 
     // Determine target week
     let targetWeek = exportWeek;
@@ -1227,151 +1229,15 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
       resp.token || '' // Add Token
     ];
 
-    switch (type) {
-      case 'tech':
-        headers = [
-          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
-          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
-          'Was the technical session held this week?',
-          'On a scale of 1 to 5, how likely are you to agree with the statement "The course content was delivered in an effective way for me to learn"',
-          'On a scale of 1 to 5, how would you rate the trainer\'s technical knowledge of the topic, ability to address your doubts, and provide additional help on complex topics?',
-          'On a scale of 1 to 5, how effective was the trainer in connecting with you during all the scheduled trainer connect sessions?',
-          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer covered all the concepts within the scheduled time without any delays"',
-          'On a scale of 1 to 5, how likely are you to agree with the statement "The trainer provided a  recap of the Udemy learning sessions"?',
-          'On a scale of 1 to 5, how would you rate the trainer\'s provision of additional scenarios for skill application?',
-          'Please give your feedback if you have scored below 3 for any of the above questions',
-          'Aggregated Score'
-        ];
-        rows = responsesToExport.map(r => {
-          const avg = ((r.courseContentRating || 0) + (r.technicalKnowledgeRating || 0) + (r.trainerEngagementRating || 0) + (r.conceptsScheduleRating || 0) + (r.udemyRecapRating || 0) + (r.additionalScenarioRating || 0)) / 6;
-          return [
-            'Feedback Provider', // Static
-            r.candidateName || 'Anonymous',
-            'Feedback Receiver', // Static
-            cohort.primaryTrainer?.name || 'Technical Trainer',
-            cohort.code,
-            cohort.trainingLocation,
-            cohort.bu, // SL
-            cohort.bu, // BU
-            cohort.bu, // SBU
-            new Date(r.createdAt).toLocaleDateString(),
-            r.isTechnicalSessionHeld ? 'Yes' : 'No',
-            r.courseContentRating || '',
-            r.technicalKnowledgeRating || '',
-            r.trainerEngagementRating || '',
-            r.conceptsScheduleRating || '',
-            r.udemyRecapRating || '',
-            r.additionalScenarioRating || '',
-            r.technicalLowScoreExplanation || '',
-            avg.toFixed(2)
-          ];
-        });
-        break;
-      case 'mentor':
-        headers = [
-          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
-          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
-          'Was the Mentor session held this week?',
-          'Please reflect on the Mentor\'s ability to provide you guidance and practical inputs related to the course topics during this week?',
-          'Please give your feedback if you have scored below 3 for any of the above questions',
-          'Aggregated Score'
-        ];
-        rows = responsesToExport.map(r => [
-          'Feedback Provider', // Static
-          r.candidateName || 'Anonymous',
-          'Feedback Receiver', // Static
-          cohort.primaryMentor?.name || 'Mentor',
-          cohort.code,
-          cohort.trainingLocation,
-          cohort.bu, // SL
-          cohort.bu, // BU
-          cohort.bu, // SBU
-          new Date(r.createdAt).toLocaleDateString(),
-          r.isMentorSessionHeld ? 'Yes' : 'No',
-          r.mentorGuidanceRating || '',
-          r.mentorLowScoreExplanation || '',
-          r.mentorGuidanceRating || ''
-        ]);
-        break;
-      case 'coach':
-        headers = [
-          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
-          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
-          'Please reflect if your GenC HR coach was effective in guiding you on day-to-day learning schedules, milestones, checkpoints, and other necessary support you required this week?',
-          'Please give your feedback if you have scored below 3 for the above question',
-          'Aggregated Score'
-        ];
-        rows = responsesToExport.map(r => [
-          'Feedback Provider', // Static
-          r.candidateName || 'Anonymous',
-          'Feedback Receiver', // Static
-          cohort.coach?.name || 'Coach',
-          cohort.code,
-          cohort.trainingLocation,
-          cohort.bu, // SL
-          cohort.bu, // BU
-          cohort.bu, // SBU
-          new Date(r.createdAt).toLocaleDateString(),
-          r.coachEffectivenessRating || '',
-          r.coachLowScoreExplanation || '',
-          r.coachEffectivenessRating || ''
-        ]);
-        break;
-      case 'buddy':
-        headers = [
-          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
-          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
-          'Did your Buddy Mentor connect with you this week',
-          'Were your doubts clarified by your Buddy Mentor',
-          'Please reflect whether the Buddy Mentor was able to provide you guidance that gives you the confidence to clear your stage 1 qualifier assessment.',
-          'Please share your concerns or suggestions regarding the Buddy Mentor Program',
-          'Aggregated Score'
-        ];
-        rows = responsesToExport.map(r => [
-          'Feedback Provider', // Static
-          r.candidateName || 'Anonymous',
-          'Feedback Receiver', // Static
-          cohort.buddyMentor?.name || 'Buddy Mentor',
-          cohort.code,
-          cohort.trainingLocation,
-          cohort.bu, // SL
-          cohort.bu, // BU
-          cohort.bu, // SBU
-          new Date(r.createdAt).toLocaleDateString(),
-          r.didBuddyMentorConnect ? 'Yes' : 'No',
-          r.wereDoubtsClarified ? 'Yes' : 'No',
-          r.buddyMentorGuidanceRating || '',
-          r.buddyMentorSuggestions || '',
-          r.buddyMentorGuidanceRating || ''
-        ]);
-        break;
-      case 'behavioral':
-        headers = [
-          'Feedback Provider', 'Associate Name', 'Feedback Receiver', 'Receiver Name', 'Cohort Name',
-          'Location', 'SL', 'BU', 'SBU', 'Feedback Date',
-          'Was the Behavioral session held this week?',
-          'Please reflect on the behavioral trainer\'s ability to deliver course content',
-          'Please give your feedback if you have scored below 3 for the above question',
-          'Aggregated Score'
-        ];
-        rows = responsesToExport.map(r => [
-          'Feedback Provider', // Static
-          r.candidateName || 'Anonymous',
-          'Feedback Receiver', // Static
-          cohort.behavioralTrainer?.name || 'Behavioral Trainer',
-          cohort.code,
-          cohort.trainingLocation,
-          cohort.bu, // SL
-          cohort.bu, // BU
-          cohort.bu, // SBU
-          new Date(r.createdAt).toLocaleDateString(),
-          r.isBehavioralSessionHeld ? 'Yes' : 'No',
-          r.behavioralDeliveryRating || '',
-          r.behavioralLowScoreExplanation || '',
-          r.behavioralDeliveryRating || ''
-        ]);
-        break;
-    }
+    // Get configuration for the selected feedback type
+    // Default to technical if type not found (though types should match)
+    // Map 'tech' to 'technical' if needed, or update the caller to pass 'technical'
+    const exportType = type === 'tech' ? 'technical' : type as FeedbackType;
+    const config = FEEDBACK_EXPORT_CONFIG[exportType] || FEEDBACK_EXPORT_CONFIG.technical;
+
+    // Generate headers and rows using the config
+    const headers = config.headers;
+    const rows = responsesToExport.map(r => config.mapRow(r, cohort));
 
     const csvContent = [
       headers.map(h => `"${h}"`).join(','),
@@ -1476,6 +1342,32 @@ const FeedbackTab = ({ cohortId, cohort }: { cohortId: string; cohort: Cohort })
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        toast.promise(cohortApi.sendFeedbackLinkEmail(req.id), {
+                          loading: 'Sending feedback emails...',
+                          success: 'Feedback links sent to candidates!',
+                          error: 'Failed to send emails',
+                        });
+                      }}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-primary transition-all"
+                      title="Email Link to Students"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        toast.promise(cohortApi.sendReportEmail(parseInt(cohortId), req.weekNumber), {
+                          loading: 'Sending report to coaches...',
+                          success: `Week ${req.weekNumber} report sent to coaches!`,
+                          error: 'Failed to send report',
+                        });
+                      }}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-secondary transition-all"
+                      title="Email Report to Coaches"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 text-secondary/70 group-hover:text-secondary" />
+                    </button>
                     <button
                       onClick={() => copyToClipboard(req.token)}
                       className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-primary transition-all"

@@ -4,6 +4,8 @@ export interface Cohort {
   id: number;
   code: string;
   bu: string;
+  sl: string;
+  sbu: string;
   skill: string;
   activeGencCount: number;
   totalGencCount: number;
@@ -53,4 +55,10 @@ export const cohortApi = {
 
   getAdditionalMentors: (cohortId: number) =>
     api.get(`/cohorts/${cohortId}/mentors/additional`),
+
+  sendFeedbackLinkEmail: (requestId: number) =>
+    api.post(`/email/feedback/${requestId}`),
+
+  sendReportEmail: (cohortId: number, weekNumber: number) =>
+    api.post(`/email/report/${cohortId}?weekNumber=${weekNumber}`),
 };

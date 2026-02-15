@@ -23,6 +23,12 @@ public class Cohort {
     @Column(nullable = false)
     private String skill;
 
+    @Column(name = "sl")
+    private String sl;
+
+    @Column(name = "sbu")
+    private String sbu;
+
     @Column(name = "active_genc_count", nullable = false)
     private Integer activeGencCount;
 
@@ -70,10 +76,13 @@ public class Cohort {
     public Cohort() {
     }
 
-    public Cohort(String code, String bu, String skill, Integer activeGencCount, String trainingLocation,
+    public Cohort(String code, String bu, String sl, String sbu, String skill, Integer activeGencCount,
+            String trainingLocation,
             LocalDate startDate, LocalDate endDate, User coach) {
         this.code = code;
         this.bu = bu;
+        this.sl = sl;
+        this.sbu = sbu;
         this.skill = skill;
         this.activeGencCount = activeGencCount;
         this.totalGencCount = 0;
@@ -106,6 +115,22 @@ public class Cohort {
 
     public void setBu(String bu) {
         this.bu = bu;
+    }
+
+    public String getSl() {
+        return sl;
+    }
+
+    public void setSl(String sl) {
+        this.sl = sl;
+    }
+
+    public String getSbu() {
+        return sbu;
+    }
+
+    public void setSbu(String sbu) {
+        this.sbu = sbu;
     }
 
     public String getSkill() {

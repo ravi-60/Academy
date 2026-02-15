@@ -166,6 +166,8 @@ export const Cohorts = () => {
       code: row.cohort_code || row.code,
       name: row.cohort_name || row.name,
       bu: row.business_unit || row.bu,
+      sl: row.service_line || row.sl,
+      sbu: row.strategic_business_unit || row.sbu,
       skill: row.skill_technology || row.skill,
       activeGencCount: parseInt(row.active_genc_count || '0', 10),
       trainingLocation: row.location || row.training_location,
@@ -514,7 +516,7 @@ export const Cohorts = () => {
         onClose={() => setShowCSVUpload(false)}
         onUpload={handleBulkUpload}
         title="Import Cohorts"
-        requiredColumns={['Cohort Code', 'Cohort Name', 'Business Unit', 'Skill', 'Location', 'Start Date', 'End Date']}
+        requiredColumns={['Cohort Code', 'Cohort Name', 'Business Unit', 'Service Line', 'SBU', 'Skill', 'Location', 'Start Date', 'End Date']}
         optionalColumns={['Assign Coach']}
       />
     </motion.div>

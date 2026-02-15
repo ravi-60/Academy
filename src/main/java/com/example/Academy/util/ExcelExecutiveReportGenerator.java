@@ -2,7 +2,6 @@ package com.example.Academy.util;
 
 import com.example.Academy.dto.report.ExecutiveReportData;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.ByteArrayOutputStream;
@@ -19,65 +18,22 @@ public class ExcelExecutiveReportGenerator {
 
             // 1. STYLES
             CellStyle headerStyle = createHeaderStyle(workbook);
-            CellStyle titleStyle = createTitleStyle(workbook);
-            CellStyle statStyle = createStatStyle(workbook);
             CellStyle dataStyle = createDataStyle(workbook);
-            CellStyle holidayStyle = createHolidayStyle(workbook);
 
             CellStyle dateStyle = workbook.createCellStyle();
             dateStyle.cloneStyleFrom(dataStyle);
             dateStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("dd-mmm-yyyy"));
 
-            // 2. PREMIUM HEADER SECTION
-            // Title
-            Row titleRow = sheet.createRow(0);
-            Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue("Cohort Weekly Performance & Effort Analytics: " + data.getCohortCode());
-            titleCell.setCellStyle(titleStyle);
-            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 16));
-
-            // Meta Info
-            Row infoRow = sheet.createRow(1);
-            infoRow.createCell(0).setCellValue("Business Unit: " + data.getBusinessUnit());
-            infoRow.createCell(8).setCellValue("Skill Track: " + data.getSkillTrack());
-            infoRow.createCell(13).setCellValue(
-                    "Generated At: " + data.getGeneratedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-
-            Row rangeRow = sheet.createRow(2);
-            rangeRow.createCell(0).setCellValue("Report Range: " + data.getStartDate() + " to " + data.getEndDate());
-            rangeRow.createCell(8).setCellValue("Coach: " + data.getCoachName());
-            rangeRow.createCell(13).setCellValue("Reference ID: " + data.getReferenceId());
-
-            // 3. SUMMARY STATS (Row 4-5)
-            Row statsHeader = sheet.createRow(4);
-            String[] statHeaders = { "Total Hours", "Tech Hours", "Behavioral Hours", "Mentor Hours", "Buddy Hours",
-                    "Attendance %" };
-            for (int i = 0; i < statHeaders.length; i++) {
-                Cell cell = statsHeader.createCell(i);
-                cell.setCellValue(statHeaders[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            Row statsRow = sheet.createRow(5);
-            statsRow.createCell(0).setCellValue(data.getTotalHours().doubleValue());
-            statsRow.createCell(1).setCellValue(data.getTechHours().doubleValue());
-            statsRow.createCell(2).setCellValue(data.getBehavioralHours().doubleValue());
-            statsRow.createCell(3).setCellValue(data.getMentorHours().doubleValue());
-            statsRow.createCell(4).setCellValue(data.getBuddyMentorHours().doubleValue());
-            statsRow.createCell(5).setCellValue(data.getAttendancePercentage() + "%");
-            for (int i = 0; i < statHeaders.length; i++) {
-                statsRow.getCell(i).setCellStyle(statStyle);
-            }
-
-            // 4. MAIN DATA TABLE (Row 8)
-            int rowNum = 8;
+            // 2. MAIN DATA TABLE (Row 0)
+            int rowNum = 0;
             Row headerRow = sheet.createRow(rowNum++);
             headerRow.setHeightInPoints(30);
             String[] headers = {
                     "Cohort Code", "BU", "Skill", "Active GenC Count", "Training Location",
-                    "Mapped", "Internal SME /External SME/Mentor ID", "Internal SME /External SME/Mentor Name",
-                    "SME/Mentor/Buddy Mentor/MFRP Contributor", "Mode in which trainer connected",
-                    "Reason for virtual connect of the trainer", "Area of Visit/Work", "Effort in Hours",
+                    "Mapped Trainer Type (Internal/External)", "Internal SME /External SME/Mentor ID",
+                    "Internal SME /External SME/Mentor Name",
+                    "SME/Mentor/Buddy Mentor/MFRP Contributor", "Mode in which trainer connected (Virtual/In-Person)",
+                    "Reason for virtual connect of the trainer", "Area of Work", "Effort in Hours",
                     "Date", "Month", "Updated By", "Updated Date"
             };
 
@@ -87,7 +43,7 @@ public class ExcelExecutiveReportGenerator {
                 cell.setCellStyle(headerStyle);
             }
 
-            // 5. DATA ROWS
+            // 3. DATA ROWS
             if (data.getDetailedLogs() != null) {
                 for (ExecutiveReportData.DetailedEffortLog log : data.getDetailedLogs()) {
                     Row row = sheet.createRow(rowNum++);
@@ -132,7 +88,7 @@ public class ExcelExecutiveReportGenerator {
             }
 
             // Freeze panes
-            sheet.createFreezePane(0, 9);
+            sheet.createFreezePane(0, 1);
 
             // Auto-size columns
             for (int i = 0; i < headers.length; i++) {
@@ -146,18 +102,6 @@ public class ExcelExecutiveReportGenerator {
             workbook.write(out);
             return out.toByteArray();
         }
-    }
-
-    private static CellStyle createTitleStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setFontHeightInPoints((short) 18);
-        font.setBold(true);
-        font.setColor(IndexedColors.CORNFLOWER_BLUE.getIndex());
-        style.setFont(font);
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
-        return style;
     }
 
     private static CellStyle createHeaderStyle(Workbook workbook) {
@@ -188,28 +132,6 @@ public class ExcelExecutiveReportGenerator {
         Font font = workbook.createFont();
         font.setFontHeightInPoints((short) 9);
         style.setFont(font);
-        return style;
-    }
-
-    private static CellStyle createStatStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setAlignment(HorizontalAlignment.CENTER);
-        style.setBorderBottom(BorderStyle.MEDIUM);
-        style.setBorderTop(BorderStyle.MEDIUM);
-        style.setBorderLeft(BorderStyle.MEDIUM);
-        style.setBorderRight(BorderStyle.MEDIUM);
-        Font font = workbook.createFont();
-        font.setBold(true);
-        font.setFontHeightInPoints((short) 12);
-        font.setColor(IndexedColors.DARK_BLUE.getIndex());
-        style.setFont(font);
-        return style;
-    }
-
-    private static CellStyle createHolidayStyle(Workbook workbook) {
-        CellStyle style = workbook.createCellStyle();
-        style.setFillForegroundColor(IndexedColors.ROSE.getIndex());
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         return style;
     }
 }

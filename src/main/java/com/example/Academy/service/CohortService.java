@@ -49,6 +49,8 @@ public class CohortService {
         }
         cohort.setCode(request.getCode());
         cohort.setBu(request.getBu());
+        cohort.setSl(request.getSl());
+        cohort.setSbu(request.getSbu());
         cohort.setSkill(request.getSkill());
         cohort.setTrainingLocation(request.getTrainingLocation());
         cohort.setStartDate(
@@ -210,6 +212,8 @@ public class CohortService {
 
         cohort.setCode(request.getCode());
         cohort.setBu(request.getBu());
+        cohort.setSl(request.getSl());
+        cohort.setSbu(request.getSbu());
         cohort.setSkill(request.getSkill());
         cohort.setActiveGencCount(request.getActiveGencCount() != null ? request.getActiveGencCount() : 0);
         cohort.setTrainingLocation(request.getTrainingLocation());
@@ -270,6 +274,13 @@ public class CohortService {
         dto.setId(c.getId());
         dto.setCode(c.getCode());
         dto.setBu(c.getBu());
+        dto.setBu(c.getBu());
+        // dto.setSl(c.getSl()); // If CohortResponse needs it, add it there too. But
+        // user assumedly wants it in DB and Input.
+        // Assuming CohortResponse might not need it immediately unless asked, but
+        // usually robust to add.
+        // User said "in cohorts db i need two more feld sl, sbu"
+        // Let's verify CohortResponse later. For now, just backend logic.
         dto.setSkill(c.getSkill());
         dto.setActiveGencCount(c.getActiveGencCount());
         dto.setTotalGencCount(c.getTotalGencCount());

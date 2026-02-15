@@ -109,8 +109,8 @@ const GlassRating = ({ label, value, onChange, description, explanationValue, on
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <div className="space-y-0.5">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-primary/70">{label}</label>
-                        <p className="text-[10px] text-slate-500">{description}</p>
+                        <label className="text-xs font-bold uppercase tracking-widest text-primary/70">{label}</label>
+                        <p className="text-base font-medium text-slate-400">{description}</p>
                     </div>
                     <span className="text-xl font-black text-white/10 group-hover:text-primary transition-colors">{value || '--'}</span>
                 </div>
@@ -518,7 +518,7 @@ const FinalSuccessView = ({ navigate, token, cohortCode }: any) => {
 
 const NavigableToggle = ({ label, value, onChange }: any) => (
     <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-        <span className="text-xs font-medium text-slate-300">{label}</span>
+        <span className="text-sm font-medium text-slate-300">{label}</span>
         <div className="flex bg-black/20 p-1 rounded-lg">
             <button
                 type="button"
@@ -546,7 +546,7 @@ const NavigableToggle = ({ label, value, onChange }: any) => (
 
 const ToggleControl = ({ label, value, onChange }: any) => (
     <div className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/5">
-        <span className="text-xs font-black uppercase tracking-widest text-slate-300">{label}</span>
+        <span className="text-sm font-black uppercase tracking-widest text-slate-300">{label}</span>
         <div className="flex p-1 bg-black/40 rounded-2xl border border-white/5">{[true, false].map((v) => (<button key={v.toString()} type="button" onClick={() => onChange(v)} className={cn("px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", value === v ? "bg-primary text-slate-950 shadow-glow-cyan" : "text-slate-600")}>{v ? 'Yes' : 'No'}</button>))}</div>
     </div>
 );
@@ -556,5 +556,5 @@ const NavigationButtons = ({ onPrev, onNext, disableNext }: any) => (
 );
 
 const PremiumTextArea = ({ label, value, onChange }: any) => (
-    <div className="space-y-2"><label className="text-[9px] font-black uppercase tracking-[0.4em] text-slate-500 ml-1">{label}</label><textarea value={value} onChange={e => onChange(e.target.value)} placeholder="Document specific observations..." className="w-full h-32 p-6 bg-white/[0.02] border border-white/5 rounded-3xl text-sm font-medium text-white outline-none focus:border-primary/50 transition-all resize-none placeholder:text-slate-700" /></div>
+    <div className="space-y-2"><label className="text-xs font-black uppercase tracking-[0.4em] text-slate-500 ml-1">{label}</label><textarea value={value} onChange={e => onChange(e.target.value)} placeholder="Document specific observations..." className="w-full h-32 p-6 bg-white/[0.02] border border-white/5 rounded-3xl text-sm font-medium text-white outline-none focus:border-primary/50 transition-all resize-none placeholder:text-slate-700" /></div>
 );
