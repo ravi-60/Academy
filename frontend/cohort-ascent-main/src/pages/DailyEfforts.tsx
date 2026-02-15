@@ -45,7 +45,8 @@ import {
   isBefore,
   startOfWeek,
   endOfWeek,
-  parseISO
+  parseISO,
+  subWeeks
 } from 'date-fns';
 import { DayLog, WeeklyEffortSubmission } from '@/effortApi';
 import { useAuthStore } from '@/stores/authStore';
@@ -606,8 +607,20 @@ export const DailyEfforts = () => {
                 const weekStartStr = format(week.startDate, 'yyyy-MM-dd');
                 const isCompleted = weeklySummaries.some(s => s.weekStartDate === weekStartStr);
                 const today = startOfToday();
+
+                // Allow Current Week and Previous Week
+                const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
+                const previousWeekStart = subWeeks(currentWeekStart, 1);
+
+                // Check strictly if week.startDate matches either current or previous week start
+                const isCurrentWeek = isSameDay(week.startDate, currentWeekStart);
+                const isPreviousWeek = isSameDay(week.startDate, previousWeekStart);
+
+                // Locked if NOT current AND NOT previous week
+                // (Future weeks will be greater than current, Past weeks will be less than previous)
+                const isLocked = !isCurrentWeek && !isPreviousWeek;
+
                 const isActive = (isSameDay(today, week.startDate) || isAfter(today, week.startDate)) && (isSameDay(today, week.endDate) || isBefore(today, week.endDate));
-                const isLocked = isAfter(week.startDate, today);
                 const isSelected = selectedWeek?.id === week.id;
 
                 return (
@@ -664,7 +677,11 @@ export const DailyEfforts = () => {
                       {isLocked && !isCompleted && (
                         <TooltipContent side="right" className="bg-background/95 border-border/50 backdrop-blur-md">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Status: Locked</p>
-                          <p className="text-xs text-muted-foreground mt-1">This week unlocks on {format(week.startDate, 'PPPP')}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {isAfter(week.startDate, today)
+                              ? `This week unlocks on ${format(week.startDate, 'PPPP')}`
+                              : "Submission window closed."}
+                          </p>
                         </TooltipContent>
                       )}
                     </Tooltip>

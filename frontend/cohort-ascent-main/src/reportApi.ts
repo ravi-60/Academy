@@ -25,6 +25,8 @@ export interface ReportResponse {
   distribution: ChartData[];
   utilization: ChartData[];
   recentReports: Activity[];
+  latestWeekEffort: Record<string, number>;
+  overallEffort: Record<string, number>;
 }
 
 export const reportApi = {
@@ -32,4 +34,5 @@ export const reportApi = {
   getRecentActivities: (coachId?: number) => api.get<any[]>('/reports/recent-activities', { params: { coachId } }),
   exportReport: (params: { cohortId: number; startDate: string; endDate: string; format: string }) =>
     api.get('/reports/export', { params, responseType: 'blob' }),
+  getSubmissionCount: () => api.get<number>('/reports/submission-count'),
 };

@@ -41,13 +41,16 @@ public class ReportService {
                 ReportStatsDTO stats = calculateStats(cohortId);
                 List<ChartDataDTO> distribution = calculateDistribution(cohortId);
                 List<ChartDataDTO> utilization = calculateUtilization(cohortId);
+                Map<String, BigDecimal> latestWeekEffort = calculateLatestWeekEffort(cohortId);
+                Map<String, BigDecimal> overallEffort = calculateOverallEffort(cohortId);
 
                 return new ReportResponseDTO(
                                 stats,
                                 distribution,
                                 utilization,
-                                activityRepository.findAll() // Fallback
-                );
+                                activityRepository.findAll(), // Fallback
+                                latestWeekEffort,
+                                overallEffort);
         }
 
         public List<RecentActivityDTO> getRecentActivities(Long coachId) {
@@ -128,5 +131,71 @@ public class ReportService {
                 return trainerHours.entrySet().stream()
                                 .map(e -> new ChartDataDTO(e.getKey(), e.getValue()))
                                 .collect(Collectors.toList());
+        }
+
+        private Map<String, BigDecimal> calculateLatestWeekEffort(Long cohortId) {
+                List<WeeklySummary> summaries = (cohortId != null)
+                                ? weeklySummaryRepository.findByCohortId(cohortId)
+                                : weeklySummaryRepository.findAll();
+
+                if (summaries.isEmpty()) {
+                        return Map.of(
+                                        "Technical Trainer", BigDecimal.ZERO,
+                                        "Mentor", BigDecimal.ZERO,
+                                        "Buddy Mentor", BigDecimal.ZERO,
+                                        "Soft Skills", BigDecimal.ZERO);
+                }
+
+                // Get latest summary
+                WeeklySummary latest = summaries.stream()
+                                .max((a, b) -> a.getWeekStartDate().compareTo(b.getWeekStartDate()))
+                                .orElse(summaries.get(0));
+
+                return Map.of(
+                                "Technical Trainer",
+                                latest.getTechnicalTrainerHours() != null ? latest.getTechnicalTrainerHours()
+                                                : BigDecimal.ZERO,
+                                "Mentor", latest.getMentorHours() != null ? latest.getMentorHours() : BigDecimal.ZERO,
+                                "Buddy Mentor",
+                                latest.getBuddyMentorHours() != null ? latest.getBuddyMentorHours() : BigDecimal.ZERO,
+                                "Soft Skills",
+                                latest.getBehavioralTrainerHours() != null ? latest.getBehavioralTrainerHours()
+                                                : BigDecimal.ZERO);
+        }
+
+        private Map<String, BigDecimal> calculateOverallEffort(Long cohortId) {
+                List<WeeklySummary> summaries = (cohortId != null)
+                                ? weeklySummaryRepository.findByCohortId(cohortId)
+                                : weeklySummaryRepository.findAll();
+
+                BigDecimal techTotal = summaries.stream()
+                                .map(s -> s.getTechnicalTrainerHours() != null ? s.getTechnicalTrainerHours()
+                                                : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                BigDecimal mentorTotal = summaries.stream()
+                                .map(s -> s.getMentorHours() != null ? s.getMentorHours() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                BigDecimal buddyTotal = summaries.stream()
+                                .map(s -> s.getBuddyMentorHours() != null ? s.getBuddyMentorHours() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                BigDecimal behavioralTotal = summaries.stream()
+                                .map(s -> s.getBehavioralTrainerHours() != null ? s.getBehavioralTrainerHours()
+                                                : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                return Map.of(
+                                "Technical", techTotal,
+                                "Mentor", mentorTotal,
+                                "Buddy Mentor", buddyTotal,
+                                "Soft Skills", behavioralTotal);
+        }
+
+        public long getWeeklySubmissionCount() {
+                java.time.LocalDate currentWeekStart = java.time.LocalDate.now()
+                                .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+                return weeklySummaryRepository.countByWeekStartDate(currentWeekStart);
         }
 }

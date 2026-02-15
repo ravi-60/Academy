@@ -145,16 +145,13 @@ export const Reports = () => {
     const attendance = reportData.stats.averageAttendance || 95;
     const readiness = Math.min(100, (progression * 0.7) + (attendance * 0.3));
 
-    // 2. Generate Trend Data based on total hours
-    const baseHour = reportData.stats.totalEffortHours / 6;
-    const trendData = [
-      { name: 'Week 1', effort: baseHour * 0.8, baseline: baseHour },
-      { name: 'Week 2', effort: baseHour * 0.9, baseline: baseHour },
-      { name: 'Week 3', effort: baseHour * 1.1, baseline: baseHour },
-      { name: 'Week 4', effort: baseHour * 1.0, baseline: baseHour },
-      { name: 'Week 5', effort: baseHour * 1.2, baseline: baseHour },
-      { name: 'Week 6', effort: baseHour * 1.3, baseline: baseHour },
-    ];
+    // 2. Latest Week Effort (Pie Chart)
+    const pieData = reportData.latestWeekEffort ? [
+      { name: 'Technical', value: reportData.latestWeekEffort['Technical Trainer'] || 0 },
+      { name: 'Buddy Mentor', value: reportData.latestWeekEffort['Buddy Mentor'] || 0 },
+      { name: 'Mentor', value: reportData.latestWeekEffort['Mentor'] || 0 },
+      { name: 'Soft Skills', value: reportData.latestWeekEffort['Soft Skills'] || 0 },
+    ].filter(item => item.value > 0) : [];
 
     // 3. Risk Assessment Logic
     const risks = [];
@@ -170,17 +167,26 @@ export const Reports = () => {
       risks.push({ title: 'Operational Stability', desc: 'System telemetry shows consistent sync.', level: 'None' });
     }
 
-    // 4. Competency Radar Mapping
+    // 4. Overall Effort (Radar Chart - Quad Analysis)
+    const overall = reportData.overallEffort || {};
+    // Calculate max value for scaling if needed, defaulting to 100 to avoid division by zero
+    const maxVal = Math.max(
+      (overall['Technical'] || 0),
+      (overall['Buddy Mentor'] || 0),
+      (overall['Mentor'] || 0),
+      (overall['Soft Skills'] || 0),
+      1
+    );
+
     const radarData = [
-      { subject: 'Technical', A: 70 + (progression / 4), B: 90, fullMark: 100 },
-      { subject: 'Agility', A: 60 + (attendance / 5), B: 90, fullMark: 100 },
-      { subject: 'Delivery', A: 50 + (progression / 3), B: 90, fullMark: 100 },
-      { subject: 'Innovation', A: 40 + (progression / 2.5), B: 90, fullMark: 100 },
-      { subject: 'Soft Skills', A: 80, B: 90, fullMark: 100 },
-      { subject: 'Leadership', A: progression / 2, B: 90, fullMark: 100 },
+      { subject: 'Technical', A: overall['Technical'] || 0, fullMark: maxVal },
+      { subject: 'Buddy Mentor', A: overall['Buddy Mentor'] || 0, fullMark: maxVal },
+      { subject: 'Mentor', A: overall['Mentor'] || 0, fullMark: maxVal },
+      { subject: 'Soft Skills', A: overall['Soft Skills'] || 0, fullMark: maxVal },
     ];
 
-    return { progression, readiness, trendData, risks, radarData };
+    return { progression, readiness, pieData, risks, radarData };
+
   }, [selectedCohort, reportData]);
 
   if (isLoadingCohorts) {
@@ -584,9 +590,9 @@ export const Reports = () => {
                         <div className="space-y-1">
                           <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                             <TrendingUp className="h-5 w-5 text-primary" />
-                            Engagement Velocity Trend
+                            Latest Week Effort
                           </h3>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Historical Bandwidth Telemetry (Last 30 Days)</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Immediate week effort breakdown by trainer type</p>
                         </div>
                         <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
@@ -595,41 +601,38 @@ export const Reports = () => {
                       </div>
                       <div className="h-[380px] w-full p-6">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={dynamicMetrics?.trendData || []}>
-                            <defs>
-                              <linearGradient id="colorEffort" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis
-                              dataKey="name"
-                              stroke="#64748b"
-                              fontSize={10}
-                              fontWeight={600}
-                              tickLine={false}
-                              axisLine={false}
-                            />
-                            <YAxis hide />
+                          <PieChart>
+                            <Pie
+                              data={dynamicMetrics?.pieData || []}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={80}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {(dynamicMetrics?.pieData || []).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0.5)" strokeWidth={2} />
+                              ))}
+                            </Pie>
                             <RechartsTooltip
                               contentStyle={{
                                 backgroundColor: 'rgba(15, 23, 42, 0.95)',
                                 borderColor: 'rgba(255,255,255,0.1)',
-                                borderRadius: '16px',
+                                borderRadius: '12px',
                                 backdropFilter: 'blur(12px)',
-                                fontSize: '12px',
-                                boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                                color: '#fff'
                               }}
+                              itemStyle={{ color: '#fff' }}
                             />
-                            <Area
-                              type="monotone"
-                              dataKey="effort"
-                              stroke="hsl(var(--primary))"
-                              fillOpacity={1}
-                              fill="url(#colorEffort)"
-                              strokeWidth={3}
+                            <Legend
+                              layout="vertical"
+                              verticalAlign="middle"
+                              align="right"
+                              iconType="circle"
+                              formatter={(value, entry: any) => <span className="text-xs font-bold text-slate-300 ml-2">{value}</span>}
                             />
-                          </AreaChart>
+                          </PieChart>
                         </ResponsiveContainer>
                       </div>
                     </GlassCard>
@@ -646,9 +649,9 @@ export const Reports = () => {
                         <div className="space-y-1">
                           <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                             <Target className="h-5 w-5 text-secondary" />
-                            Core Competency Matrix
+                            Overall Effort Analysis
                           </h3>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Skill Distribution & Mastery Levels</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Total Effort Distribution by Role (Quad Analysis)</p>
                         </div>
                         <div className="px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 shadow-sm">
                           <span className="text-[10px] font-black text-secondary">H2-BASELINE</span>
@@ -656,37 +659,27 @@ export const Reports = () => {
                       </div>
                       <div className="h-[380px] w-full p-8 flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={dynamicMetrics?.radarData || []}>
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={dynamicMetrics?.radarData || []}>
                             <PolarGrid stroke="#334155" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
-                            <PolarRadiusAxis hide />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
+                            <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                             <Radar
-                              name="Current"
+                              name="Effort Hours"
                               dataKey="A"
                               stroke="hsl(var(--primary))"
                               fill="hsl(var(--primary))"
-                              fillOpacity={0.5}
+                              fillOpacity={0.4}
                             />
-                            <Radar
-                              name="Target"
-                              dataKey="B"
-                              stroke="hsl(var(--secondary))"
-                              fill="hsl(var(--secondary))"
-                              fillOpacity={0.2}
+                            <RechartsTooltip
+                              contentStyle={{
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderRadius: '12px',
+                                backdropFilter: 'blur(12px)',
+                                color: '#fff'
+                              }}
                             />
-                            <Legend
-                              iconType="circle"
-                              content={({ payload }) => (
-                                <div className="flex justify-center gap-8 mt-4">
-                                  {payload?.map((entry: any, index: number) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                                      <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{entry.value}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            />
+                            <Legend />
                           </RadarChart>
                         </ResponsiveContainer>
                       </div>

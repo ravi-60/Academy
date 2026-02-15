@@ -26,9 +26,6 @@ public class CohortService {
     private MentorRepository mentorRepository;
 
     @Autowired
-    private BuddyMentorRepository buddyMentorRepository;
-
-    @Autowired
     private CohortTrainerMappingRepository cohortTrainerMappingRepository;
 
     @Autowired

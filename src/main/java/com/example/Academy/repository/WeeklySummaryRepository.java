@@ -18,4 +18,6 @@ public interface WeeklySummaryRepository extends JpaRepository<WeeklySummary, Lo
     boolean existsByCohortIdAndWeekStartDate(Long cohortId, LocalDate weekStartDate);
 
     List<WeeklySummary> findTop4ByCohortCoachIdOrderByWeekStartDateDesc(Long coachId);
+
+    long countByWeekStartDate(LocalDate weekStartDate);
 }

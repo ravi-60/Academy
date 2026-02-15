@@ -47,6 +47,9 @@ public class EffortService {
     private NotificationService notificationService;
 
     public StakeholderEffort submitEffort(StakeholderEffort effort, Long userId) {
+        // Validate submission window
+        validateSubmissionWindow(effort.getEffortDate());
+
         // Validate cohort exists
         Cohort cohort = cohortRepository.findById(effort.getCohort().getId())
                 .orElseThrow(() -> new RuntimeException("Cohort not found"));
@@ -202,6 +205,9 @@ public class EffortService {
     }
 
     public void submitWeeklyEffort(WeeklyEffortSubmissionDTO dto, Long userId) {
+        // Validate submission window
+        validateSubmissionWindow(dto.getWeekStartDate());
+
         Cohort cohort = cohortRepository.findById(dto.getCohortId())
                 .orElseThrow(() -> new RuntimeException("Cohort not found"));
 
@@ -313,5 +319,17 @@ public class EffortService {
         effort.setCreatedAt(LocalDateTime.now());
 
         effortRepository.save(effort);
+    }
+
+    private void validateSubmissionWindow(LocalDate activityDate) {
+        LocalDate today = LocalDate.now();
+        LocalDate currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate previousWeekStart = currentWeekStart.minusWeeks(1);
+        LocalDate activityWeekStart = activityDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+        if (!activityWeekStart.equals(currentWeekStart) && !activityWeekStart.equals(previousWeekStart)) {
+            throw new RuntimeException(
+                    "Submission denied: You can only submit reports for the current or previous week.");
+        }
     }
 }

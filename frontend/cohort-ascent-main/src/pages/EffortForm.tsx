@@ -68,11 +68,30 @@ export const EffortForm = () => {
       setSelectedCohort(cohort || null);
 
       if (cohort) {
-        const weeks = generateCalendarWeeks(new Date(cohort.startDate), new Date(cohort.endDate));
-        setWeekOptions(weeks);
+        const allWeeks = generateCalendarWeeks(new Date(cohort.startDate), new Date(cohort.endDate));
+        setWeekOptions(allWeeks);
       }
     }
   }, [selectedCohortId, cohorts]);
+
+  // Helper to check if a week is locked
+  const isWeekLocked = (weekStartDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    const currentMonday = new Date(today);
+    currentMonday.setDate(diff);
+
+    const previousMonday = new Date(currentMonday);
+    previousMonday.setDate(currentMonday.getDate() - 7);
+
+    const wDate = new Date(weekStartDate);
+    wDate.setHours(0, 0, 0, 0);
+
+    return wDate.toDateString() !== currentMonday.toDateString() &&
+      wDate.toDateString() !== previousMonday.toDateString();
+  };
 
   const onSubmit = async (data: EffortFormData) => {
     if (!user) return;
@@ -199,11 +218,14 @@ export const EffortForm = () => {
                 disabled={!selectedCohort}
               >
                 <option value="">Awaiting Node Link...</option>
-                {weekOptions.map(week => (
-                  <option key={week.value} value={week.value}>
-                    {week.label}
-                  </option>
-                ))}
+                {weekOptions.map(week => {
+                  const locked = isWeekLocked(week.value);
+                  return (
+                    <option key={week.value} value={week.value} disabled={locked}>
+                      {week.label} {locked ? ' 🔒' : ''}
+                    </option>
+                  );
+                })}
               </select>
               {errors.weekStartDate && (
                 <p className="text-[10px] font-bold text-destructive uppercase tracking-widest">{errors.weekStartDate.message}</p>

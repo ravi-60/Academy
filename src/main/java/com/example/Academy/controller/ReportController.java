@@ -35,6 +35,11 @@ public class ReportController {
         return ResponseEntity.ok(reportService.getRecentActivities(coachId));
     }
 
+    @GetMapping("/submission-count")
+    public ResponseEntity<Long> getSubmissionCount() {
+        return ResponseEntity.ok(reportService.getWeeklySubmissionCount());
+    }
+
     @GetMapping("/export")
     public ResponseEntity<byte[]> exportReport(
             @RequestParam Long cohortId,

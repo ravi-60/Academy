@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { cohortApi, Cohort } from "@/cohortApi";
+import { reportApi } from "@/reportApi";
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { StatsCard } from '@/components/ui/StatsCard';
@@ -29,6 +30,7 @@ export const Dashboard = () => {
   const { user } = useAuthStore();
   const { notifications } = useNotificationStore();
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [submissionCount, setSubmissionCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
@@ -72,6 +74,10 @@ export const Dashboard = () => {
           toast.error('Telemetry offline: Failed to load operations data');
         })
         .finally(() => setLoading(false));
+
+      reportApi.getSubmissionCount()
+        .then(response => setSubmissionCount(response.data))
+        .catch(console.error);
     }
   }, [user]);
 
@@ -167,12 +173,12 @@ export const Dashboard = () => {
           delay={0.3}
         />
         <StatsCard
-          title="Pending Briefs"
-          value={pendingReports.toString()}
-          change="Action required"
-          changeType="negative"
+          title="Submitted Briefs"
+          value={submissionCount.toString()}
+          change={`${Math.max(0, cohorts.length - submissionCount)} Pending`}
+          changeType={cohorts.length - submissionCount > 0 ? "negative" : "positive"}
           icon={Clock}
-          iconColor="warning"
+          iconColor={cohorts.length - submissionCount > 0 ? "warning" : "success"}
           delay={0.4}
         />
       </div>
