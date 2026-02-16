@@ -301,12 +301,25 @@ public class EffortService {
 
         StakeholderEffort effort = new StakeholderEffort();
         effort.setCohort(cohort);
-        if (stakeholder == null) {
-            // If the stakeholder is not assigned, we still allow logging if needed,
-            // but the database constraint change is required.
-            // Log a warning or handle as per business logic
+        // Force the trainer_mentor_id to be the actual trainer/mentor for the selected
+        // role
+        // even if the frontend sends the Coach's ID.
+        User actualStakeholder = stakeholder;
+
+        // If the provided stakeholder is NULL or is identifying as the Coach (empId:
+        // coach2001)
+        // when it SHOULD be a Trainer/Mentor role, we force resolve from Cohort
+        // defaults.
+        if (actualStakeholder == null || "coach2001".equals(actualStakeholder.getEmpId())) {
+            actualStakeholder = switch (role) {
+                case TRAINER -> cohort.getPrimaryTrainer();
+                case MENTOR -> cohort.getPrimaryMentor();
+                case BUDDY_MENTOR -> cohort.getBuddyMentor();
+                case BH_TRAINER -> cohort.getBehavioralTrainer();
+            };
         }
-        effort.setTrainerMentor(stakeholder);
+
+        effort.setTrainerMentor(actualStakeholder);
         effort.setRole(role);
         effort.setMode(StakeholderEffort.Mode.IN_PERSON);
         effort.setAreaOfWork(

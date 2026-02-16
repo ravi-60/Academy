@@ -5,8 +5,11 @@ import com.example.Academy.entity.Cohort;
 import com.example.Academy.entity.StakeholderEffort;
 import com.example.Academy.entity.WeeklySummary;
 import com.example.Academy.repository.CohortRepository;
+import com.example.Academy.repository.MentorRepository;
 import com.example.Academy.repository.StakeholderEffortRepository;
+import com.example.Academy.repository.TrainerRepository;
 import com.example.Academy.repository.WeeklySummaryRepository;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.Academy.util.ExcelExecutiveReportGenerator;
 import com.example.Academy.util.PdfExecutiveReportGenerator;
 import com.lowagie.text.DocumentException;
@@ -32,6 +35,13 @@ public class ExecutiveReportService {
         @Autowired
         private WeeklySummaryRepository summaryRepository;
 
+        @Autowired
+        private TrainerRepository trainerRepository;
+
+        @Autowired
+        private MentorRepository mentorRepository;
+
+        @Transactional(readOnly = true)
         public byte[] generateReport(Long cohortId, LocalDate startDate, LocalDate endDate, String format)
                         throws IOException, DocumentException {
                 ExecutiveReportData data = getReportData(cohortId, startDate, endDate);
@@ -147,12 +157,7 @@ public class ExecutiveReportService {
                                                 .mentorName(e.getTrainerMentor() != null
                                                                 ? e.getTrainerMentor().getName()
                                                                 : "N/A")
-                                                .role(switch (e.getRole()) {
-                                                        case TRAINER -> "SME";
-                                                        case MENTOR -> "Mentor";
-                                                        case BUDDY_MENTOR -> "Buddy Mentor";
-                                                        case BH_TRAINER -> "MFRP Contributor";
-                                                })
+                                                .role(resolveRoleName(e))
                                                 .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "Virtual"
                                                                 : "In-Person")
                                                 .reasonVirtual(e.getReasonVirtual() != null ? e.getReasonVirtual()
@@ -187,5 +192,45 @@ public class ExecutiveReportService {
                                 .dailyLogs(dailyLogs)
                                 .detailedLogs(detailedLogs)
                                 .build();
+        }
+
+        private String resolveRoleName(StakeholderEffort e) {
+                if (e.getTrainerMentor() == null) {
+                        return switch (e.getRole()) {
+                                case TRAINER -> "SME";
+                                case MENTOR -> "Mentor";
+                                case BUDDY_MENTOR -> "Buddy Mentor";
+                                case BH_TRAINER -> "MFRP Contributor";
+                        };
+                }
+
+                String empId = e.getTrainerMentor().getEmpId();
+
+                if (e.getRole() == StakeholderEffort.Role.TRAINER) {
+                        return trainerRepository.findByEmpId(empId)
+                                        .map(t -> t.getTrainerType() != null ? capitalize(t.getTrainerType().name())
+                                                        : "SME")
+                                        .orElse("SME");
+                }
+
+                if (e.getRole() == StakeholderEffort.Role.MENTOR) {
+                        return mentorRepository.findByEmpId(empId)
+                                        .map(m -> m.getMentorType() != null ? capitalize(m.getMentorType().name())
+                                                        : "Mentor")
+                                        .orElse("Mentor");
+                }
+
+                return switch (e.getRole()) {
+                        case TRAINER -> "SME";
+                        case MENTOR -> "Mentor";
+                        case BUDDY_MENTOR -> "Buddy Mentor";
+                        case BH_TRAINER -> "MFRP Contributor";
+                };
+        }
+
+        private String capitalize(String str) {
+                if (str == null || str.isEmpty())
+                        return str;
+                return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
         }
 }

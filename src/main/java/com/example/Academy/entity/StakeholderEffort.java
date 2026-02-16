@@ -18,7 +18,7 @@ public class StakeholderEffort {
     private Cohort cohort;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trainer_mentor_id", nullable = true)
+    @JoinColumn(name = "trainer_mentor_id", referencedColumnName = "emp_id", nullable = true, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private User trainerMentor;
 
     @Enumerated(EnumType.STRING)
