@@ -9,6 +9,10 @@ import com.example.Academy.repository.MentorRepository;
 import com.example.Academy.repository.StakeholderEffortRepository;
 import com.example.Academy.repository.TrainerRepository;
 import com.example.Academy.repository.WeeklySummaryRepository;
+import com.example.Academy.repository.CohortTrainerMappingRepository;
+import com.example.Academy.repository.CohortMentorMappingRepository;
+import com.example.Academy.entity.CohortTrainerMapping;
+import com.example.Academy.entity.CohortMentorMapping;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.Academy.util.ExcelExecutiveReportGenerator;
 import com.example.Academy.util.PdfExecutiveReportGenerator;
@@ -40,6 +44,12 @@ public class ExecutiveReportService {
 
         @Autowired
         private MentorRepository mentorRepository;
+
+        @Autowired
+        private CohortTrainerMappingRepository trainerMappingRepository;
+
+        @Autowired
+        private CohortMentorMappingRepository mentorMappingRepository;
 
         @Transactional(readOnly = true)
         public byte[] generateReport(Long cohortId, LocalDate startDate, LocalDate endDate, String format)
@@ -149,14 +159,9 @@ public class ExecutiveReportService {
                                                 .skill(cohort.getSkill())
                                                 .activeGencCount(cohort.getActiveGencCount())
                                                 .trainingLocation(cohort.getTrainingLocation())
-                                                .mapped(e.getTrainerMentor() != null
-                                                                ? e.getTrainerMentor().getEmployeeType().name()
-                                                                : "N/A")
-                                                .mentorId(e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId()
-                                                                : "N/A")
-                                                .mentorName(e.getTrainerMentor() != null
-                                                                ? e.getTrainerMentor().getName()
-                                                                : "N/A")
+                                                .mapped(resolveMappedType(e, cohort))
+                                                .mentorId(resolveStakeholderId(e, cohort))
+                                                .mentorName(resolveStakeholderName(e, cohort))
                                                 .role(resolveRoleName(e))
                                                 .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "Virtual"
                                                                 : "In-Person")
@@ -232,5 +237,75 @@ public class ExecutiveReportService {
                 if (str == null || str.isEmpty())
                         return str;
                 return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
+        }
+
+        private String resolveMappedType(StakeholderEffort e, Cohort cohort) {
+                // Try mapping first
+                if (e.getRole() == StakeholderEffort.Role.TRAINER || e.getRole() == StakeholderEffort.Role.BH_TRAINER) {
+                        return trainerMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name())
+                                                        || (e.getRole() == StakeholderEffort.Role.TRAINER
+                                                                        && m.getRole() == CohortTrainerMapping.Role.TRAINER)
+                                                        || (e.getRole() == StakeholderEffort.Role.BH_TRAINER
+                                                                        && m.getRole() == CohortTrainerMapping.Role.BH_TRAINER))
+                                        .findFirst()
+                                        .map(m -> m.getTrainer().isInternal() ? "INTERNAL" : "EXTERNAL")
+                                        .orElse(e.getTrainerMentor() != null
+                                                        ? e.getTrainerMentor().getEmployeeType().name()
+                                                        : "N/A");
+                }
+                if (e.getRole() == StakeholderEffort.Role.MENTOR
+                                || e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR) {
+                        return mentorMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name())
+                                                        || (e.getRole() == StakeholderEffort.Role.MENTOR
+                                                                        && m.getRole() == CohortMentorMapping.Role.MENTOR)
+                                                        || (e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR
+                                                                        && m.getRole() == CohortMentorMapping.Role.BUDDY_MENTOR))
+                                        .findFirst()
+                                        .map(m -> m.getMentor().isInternal() ? "INTERNAL" : "EXTERNAL")
+                                        .orElse(e.getTrainerMentor() != null
+                                                        ? e.getTrainerMentor().getEmployeeType().name()
+                                                        : "N/A");
+                }
+                return e.getTrainerMentor() != null ? e.getTrainerMentor().getEmployeeType().name() : "N/A";
+        }
+
+        private String resolveStakeholderId(StakeholderEffort e, Cohort cohort) {
+                if (e.getRole() == StakeholderEffort.Role.TRAINER || e.getRole() == StakeholderEffort.Role.BH_TRAINER) {
+                        return trainerMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name()))
+                                        .findFirst()
+                                        .map(m -> m.getTrainer().getEmpId())
+                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A");
+                }
+                if (e.getRole() == StakeholderEffort.Role.MENTOR
+                                || e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR) {
+                        return mentorMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name()))
+                                        .findFirst()
+                                        .map(m -> m.getMentor().getEmpId())
+                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A");
+                }
+                return e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A";
+        }
+
+        private String resolveStakeholderName(StakeholderEffort e, Cohort cohort) {
+                if (e.getRole() == StakeholderEffort.Role.TRAINER || e.getRole() == StakeholderEffort.Role.BH_TRAINER) {
+                        return trainerMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name()))
+                                        .findFirst()
+                                        .map(m -> m.getTrainer().getName())
+                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A");
+                }
+                if (e.getRole() == StakeholderEffort.Role.MENTOR
+                                || e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR) {
+                        return mentorMappingRepository.findByCohortId(cohort.getId()).stream()
+                                        .filter(m -> m.getRole().name().equals(e.getRole().name()))
+                                        .findFirst()
+                                        .map(m -> m.getMentor().getName())
+                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A");
+                }
+                return e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A";
         }
 }

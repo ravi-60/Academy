@@ -50,7 +50,7 @@ import {
 } from 'date-fns';
 import { DayLog, WeeklyEffortSubmission } from '@/effortApi';
 import { useAuthStore } from '@/stores/authStore';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, TooltipPortal } from '@/components/ui/tooltip';
 import { reportApi } from '@/reportApi';
 
 
@@ -69,6 +69,7 @@ export const DailyEfforts = () => {
   const [localDayLogs, setLocalDayLogs] = useState<Record<string, DayLog>>({});
   const [savedDays, setSavedDays] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [isOverrideEdit, setIsOverrideEdit] = useState(false);
 
   const { data: allCohorts = [] } = useCohorts();
   const { data: cohortDetail } = useCohort(selectedCohortId || 0);
@@ -112,6 +113,16 @@ export const DailyEfforts = () => {
     );
     return currentWeek || calendarWeeks[0];
   }, [calendarWeeks, selectedWeekId]);
+
+  const isEditableWindow = useMemo(() => {
+    if (!selectedWeek) return false;
+    const today = startOfToday();
+    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const previousWeekStart = subWeeks(currentWeekStart, 1);
+    const activityWeekStart = selectedWeek.startDate;
+
+    return isSameDay(activityWeekStart, currentWeekStart) || isSameDay(activityWeekStart, previousWeekStart);
+  }, [selectedWeek]);
 
   const { data: weeklySummaries = [] } = useWeeklySummaries(selectedCohortId || 0);
   const { data: mappingTrainers = [] } = useAdditionalTrainers(selectedCohortId || 0);
@@ -226,6 +237,10 @@ export const DailyEfforts = () => {
     setHistoryPage(1);
   }, [historySearchQuery, historySortBy, historySortOrder]);
 
+  useEffect(() => {
+    setIsOverrideEdit(false);
+  }, [selectedWeekId, selectedCohortId]);
+
 
   // Initialize local day logs
   useEffect(() => {
@@ -254,18 +269,26 @@ export const DailyEfforts = () => {
           technicalTrainer: {
             hours: dayEfforts.find(e => e.role === 'TRAINER')?.effortHours || 0,
             notes: dayEfforts.find(e => e.role === 'TRAINER')?.areaOfWork || '',
+            mode: dayEfforts.find(e => e.role === 'TRAINER')?.mode as any || 'IN_PERSON',
+            reasonVirtual: dayEfforts.find(e => e.role === 'TRAINER')?.reasonVirtual || '',
           },
           behavioralTrainer: {
             hours: dayEfforts.find(e => e.role === 'BH_TRAINER')?.effortHours || 0,
             notes: dayEfforts.find(e => e.role === 'BH_TRAINER')?.areaOfWork || '',
+            mode: dayEfforts.find(e => e.role === 'BH_TRAINER')?.mode as any || 'IN_PERSON',
+            reasonVirtual: dayEfforts.find(e => e.role === 'BH_TRAINER')?.reasonVirtual || '',
           },
           mentor: {
             hours: dayEfforts.find(e => e.role === 'MENTOR')?.effortHours || 0,
             notes: dayEfforts.find(e => e.role === 'MENTOR')?.areaOfWork || '',
+            mode: dayEfforts.find(e => e.role === 'MENTOR')?.mode as any || 'IN_PERSON',
+            reasonVirtual: dayEfforts.find(e => e.role === 'MENTOR')?.reasonVirtual || '',
           },
           buddyMentor: {
             hours: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.effortHours || 0,
             notes: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.areaOfWork || '',
+            mode: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.mode as any || 'IN_PERSON',
+            reasonVirtual: dayEfforts.find(e => e.role === 'BUDDY_MENTOR')?.reasonVirtual || '',
           }
         };
         initialSaved[dateStr] = dayEfforts.length > 0;
@@ -295,10 +318,22 @@ export const DailyEfforts = () => {
     };
   }, [localDayLogs]);
 
-  const handleUpdateLog = (date: string, role: keyof Omit<DayLog, 'date' | 'isHoliday'>, field: 'hours' | 'notes', value: any) => {
-    if (field === 'hours' && value > 9) {
-      toast.error('Daily effort cannot exceed 9 hours per person (Work Policy)');
-      return;
+  const handleUpdateLog = (date: string, role: keyof Omit<DayLog, 'date' | 'isHoliday'>, field: 'hours' | 'notes' | 'mode' | 'reasonVirtual', value: any) => {
+    if (field === 'hours') {
+      const currentLog = localDayLogs[date];
+      if (currentLog) {
+        // Calculate total hours excluding the current role being updated
+        const otherRolesHours = Object.entries(currentLog)
+          .filter(([key]) => key !== 'date' && key !== 'isHoliday' && key !== role)
+          .reduce((sum, [_, detail]) => sum + Number((detail as any)?.hours || 0), 0);
+
+        const totalWithNewValue = otherRolesHours + Number(value || 0);
+
+        if (totalWithNewValue > 9) {
+          toast.error(`Daily cumulative effort cannot exceed 9 hours for this cohort (Currently: ${totalWithNewValue}h)`);
+          return;
+        }
+      }
     }
 
     setLocalDayLogs(prev => ({
@@ -323,10 +358,10 @@ export const DailyEfforts = () => {
           ...prev[date],
           isHoliday: !isCurrentlyHoliday,
           // Reset hours if marking as holiday
-          technicalTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].technicalTrainer,
-          behavioralTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].behavioralTrainer,
-          mentor: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].mentor,
-          buddyMentor: !isCurrentlyHoliday ? { hours: 0, notes: '' } : prev[date].buddyMentor,
+          technicalTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '', mode: 'IN_PERSON', reasonVirtual: '' } : prev[date].technicalTrainer,
+          behavioralTrainer: !isCurrentlyHoliday ? { hours: 0, notes: '', mode: 'IN_PERSON', reasonVirtual: '' } : prev[date].behavioralTrainer,
+          mentor: !isCurrentlyHoliday ? { hours: 0, notes: '', mode: 'IN_PERSON', reasonVirtual: '' } : prev[date].mentor,
+          buddyMentor: !isCurrentlyHoliday ? { hours: 0, notes: '', mode: 'IN_PERSON', reasonVirtual: '' } : prev[date].buddyMentor,
         }
       };
     });
@@ -569,16 +604,28 @@ export const DailyEfforts = () => {
             {showHistory ? "Back to Logs" : "View Log History"}
           </GradientButton>
           {!showHistory && (
-            <GradientButton
-              variant="primary"
-              className="px-6 shadow-neon-blue"
-              onClick={handleFinalSubmit}
-              disabled={isWeekCompleted || submitWeeklyMutation.isPending}
-              icon={isWeekCompleted ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-              iconPosition="right"
-            >
-              {isWeekCompleted ? "Week Submitted" : "Submit Week"}
-            </GradientButton>
+            <div className="flex items-center gap-3">
+              {isWeekCompleted && isEditableWindow && !isOverrideEdit && (
+                <GradientButton
+                  variant="ghost"
+                  className="px-5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500"
+                  onClick={() => setIsOverrideEdit(true)}
+                  icon={<Activity className="h-4 w-4" />}
+                >
+                  Correct Logs
+                </GradientButton>
+              )}
+              <GradientButton
+                variant="primary"
+                className={cn("px-6 shadow-neon-blue", isOverrideEdit && "bg-amber-500 hover:bg-amber-600 border-amber-400")}
+                onClick={handleFinalSubmit}
+                disabled={(isWeekCompleted && !isOverrideEdit) || submitWeeklyMutation.isPending}
+                icon={isWeekCompleted && !isOverrideEdit ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                iconPosition="right"
+              >
+                {isWeekCompleted && !isOverrideEdit ? "Week Submitted" : (isOverrideEdit ? "Update Week" : "Submit Week")}
+              </GradientButton>
+            </div>
           )}
         </div>
       </div>
@@ -675,14 +722,29 @@ export const DailyEfforts = () => {
                         </motion.button>
                       </TooltipTrigger>
                       {isLocked && !isCompleted && (
-                        <TooltipContent side="right" className="bg-background/95 border-border/50 backdrop-blur-md">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Status: Locked</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {isAfter(week.startDate, today)
-                              ? `This week unlocks on ${format(week.startDate, 'PPPP')}`
-                              : "Submission window closed."}
-                          </p>
-                        </TooltipContent>
+                        <TooltipPortal>
+                          <TooltipContent
+                            side="right"
+                            sideOffset={10}
+                            className="z-[100] bg-background/95 border-border/50 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-[280px]"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                                <Lock className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1">Mission Lockdown</p>
+                                <p className="text-xs text-muted-foreground font-bold leading-relaxed">
+                                  {isAfter(week.startDate, today)
+                                    ? `This lifecycle node unlocks on ${format(week.startDate, 'PPPP')}.`
+                                    : "Operational submission window for this node has expired."}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Arrow decoration */}
+                            <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-background border-l border-b border-border/50 rotate-45" />
+                          </TooltipContent>
+                        </TooltipPortal>
                       )}
                     </Tooltip>
                   </TooltipProvider>
@@ -974,6 +1036,31 @@ export const DailyEfforts = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-12"
               >
+                {/* Correction Mode Banner */}
+                {isOverrideEdit && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-8 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-amber-500/20 rounded-xl">
+                        <AlertCircle className="h-6 w-6 text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-amber-500 uppercase tracking-[0.2em]">Compliance Correction Active</p>
+                        <p className="text-[11px] text-amber-500/70 font-bold uppercase tracking-tight mt-1">You are modifying a historically locked record for Week {selectedWeek?.weekNumber}. Re-submission will overwrite existing telemetry.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsOverrideEdit(false)}
+                      className="px-4 py-2 rounded-lg bg-amber-500/20 text-[10px] font-black uppercase text-amber-500 hover:bg-amber-500 hover:text-white transition-all tracking-widest"
+                    >
+                      Cancel Edit
+                    </button>
+                  </motion.div>
+                )}
+
                 {/* 5. Weekly Summary Statistics */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <GlassCard className="p-4 border-b-2 border-b-primary bg-primary/5">
@@ -1015,7 +1102,7 @@ export const DailyEfforts = () => {
                   const isFuture = isAfter(day, today);
                   const isToday = isSameDay(day, today);
                   const isSaved = savedDays[dateStr];
-                  const isDisabled = isFuture || log.isHoliday || isWeekCompleted;
+                  const isDisabled = isFuture || log.isHoliday || (isWeekCompleted && !isOverrideEdit);
 
                   return (
                     <GlassCard
@@ -1120,9 +1207,13 @@ export const DailyEfforts = () => {
                             name={section.name}
                             hours={(log as any)[section.id]?.hours || 0}
                             notes={(log as any)[section.id]?.notes || ""}
+                            mode={(log as any)[section.id]?.mode || "IN_PERSON"}
+                            reasonVirtual={(log as any)[section.id]?.reasonVirtual || ""}
                             disabled={isDisabled}
                             onChangeHours={(h) => handleUpdateLog(dateStr, section.id as any, 'hours', h)}
                             onChangeNotes={(n) => handleUpdateLog(dateStr, section.id as any, 'notes', n)}
+                            onChangeMode={(m) => handleUpdateLog(dateStr, section.id as any, 'mode', m)}
+                            onChangeReasonVirtual={(r) => handleUpdateLog(dateStr, section.id as any, 'reasonVirtual', r)}
                           />
                         ))}
                       </div>
@@ -1182,12 +1273,28 @@ interface LogRoleSectionProps {
   name: string;
   hours: number;
   notes: string;
+  mode: 'VIRTUAL' | 'IN_PERSON';
+  reasonVirtual: string;
   disabled: boolean;
   onChangeHours: (val: number) => void;
   onChangeNotes: (val: string) => void;
+  onChangeMode: (val: 'VIRTUAL' | 'IN_PERSON') => void;
+  onChangeReasonVirtual: (val: string) => void;
 }
 
-const LogRoleSection = ({ title, name, hours, notes, disabled, onChangeHours, onChangeNotes }: LogRoleSectionProps) => (
+const LogRoleSection = ({
+  title,
+  name,
+  hours,
+  notes,
+  mode,
+  reasonVirtual,
+  disabled,
+  onChangeHours,
+  onChangeNotes,
+  onChangeMode,
+  onChangeReasonVirtual
+}: LogRoleSectionProps) => (
   <div className={cn(
     "relative flex flex-col lg:grid lg:grid-cols-[220px,140px,1fr] gap-8 p-8 rounded-[2rem] border transition-all duration-500 group",
     hours > 0
@@ -1204,8 +1311,34 @@ const LogRoleSection = ({ title, name, hours, notes, disabled, onChangeHours, on
 
     <div className="flex flex-col justify-center">
       <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-2">{title}</p>
-      <div className="space-y-1">
+      <div className="space-y-3">
         <h5 className="text-base font-black text-foreground leading-tight">{name}</h5>
+
+        {/* Mode Selector */}
+        <div className="flex items-center gap-1.5 p-1 bg-background/40 border border-border/40 rounded-xl w-fit">
+          <button
+            onClick={() => onChangeMode('IN_PERSON')}
+            className={cn(
+              "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all",
+              mode === 'IN_PERSON'
+                ? "bg-primary text-white shadow-neon-blue"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            In-Person
+          </button>
+          <button
+            onClick={() => onChangeMode('VIRTUAL')}
+            className={cn(
+              "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all",
+              mode === 'VIRTUAL'
+                ? "bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Virtual
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1242,17 +1375,31 @@ const LogRoleSection = ({ title, name, hours, notes, disabled, onChangeHours, on
           onChange={(e) => onChangeNotes(e.target.value)}
           className={cn(
             "w-full h-24 lg:h-20 bg-background/40 border border-border/40 rounded-2xl p-5 text-sm font-bold resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all custom-scrollbar placeholder:text-muted-foreground/30",
-            notes.length > 0 && "border-primary/20"
+            notes.length > 0 && "border-primary/20",
+            mode === 'VIRTUAL' && "h-16 lg:h-12"
           )}
           placeholder={`Document ${title.toLowerCase()} contributions...`}
         />
-        {/* Character count or status */}
-        <div className="absolute bottom-3 right-4 opacity-0 group-hover/textarea:opacity-100 transition-opacity">
-          <div className="p-1 rounded bg-primary/10 border border-primary/20">
-            <Check className="h-3 w-3 text-primary" />
-          </div>
-        </div>
       </div>
+
+      {mode === 'VIRTUAL' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3"
+        >
+          <label className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <Info className="h-3 w-3" /> Reason for Virtual Connect
+          </label>
+          <input
+            type="text"
+            value={reasonVirtual}
+            onChange={(e) => onChangeReasonVirtual(e.target.value)}
+            className="w-full h-10 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all placeholder:text-amber-500/20"
+            placeholder="Explain why virtual session was necessary..."
+          />
+        </motion.div>
+      )}
     </div>
   </div>
 );

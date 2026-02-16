@@ -5,6 +5,8 @@ import com.example.Academy.entity.CohortMentorMapping;
 import com.example.Academy.repository.MentorRepository;
 import com.example.Academy.repository.CohortMentorMappingRepository;
 import com.example.Academy.repository.CohortRepository;
+import com.example.Academy.repository.UserRepository;
+import com.example.Academy.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,9 @@ public class MentorService {
 
     @Autowired
     private CohortRepository cohortRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public List<Mentor> getAllMentors() {
         return mentorRepository.findAll();
@@ -63,21 +68,30 @@ public class MentorService {
     public void assignMentorToCohort(Long mentorId, Long cohortId) {
         mentorRepository.findById(mentorId).ifPresent(mentor -> {
             cohortRepository.findById(cohortId).ifPresent(cohort -> {
-                if (!mappingRepository.existsByCohortIdAndMentorId(cohortId, mentorId)) {
-                    CohortMentorMapping mapping = new CohortMentorMapping();
-                    mapping.setCohort(cohort);
-                    mapping.setMentor(mentor);
+                // Determine target role
+                CohortMentorMapping.Role role = (mentor.getMentorType() == Mentor.MentorType.buddy)
+                        ? CohortMentorMapping.Role.BUDDY_MENTOR
+                        : CohortMentorMapping.Role.MENTOR;
 
-                    // Set role based on mentor's profession
-                    if (mentor.getMentorType() == Mentor.MentorType.buddy) {
-                        mapping.setRole(CohortMentorMapping.Role.BUDDY_MENTOR);
-                    } else {
-                        mapping.setRole(CohortMentorMapping.Role.MENTOR);
-                    }
+                // 1. Remove ANY existing mapping for this cohort and role
+                mappingRepository.deleteByCohortIdAndRole(cohortId, role);
 
-                    mapping.setCreatedAt(LocalDateTime.now());
-                    mappingRepository.save(mapping);
+                // 2. Add new mapping
+                CohortMentorMapping mapping = new CohortMentorMapping();
+                mapping.setCohort(cohort);
+                mapping.setMentor(mentor);
+                mapping.setRole(role);
+                mapping.setCreatedAt(LocalDateTime.now());
+                mappingRepository.save(mapping);
+
+                // 3. Synchronize with Cohort entity
+                Optional<User> userOpt = userRepository.findByEmpId(mentor.getEmpId());
+                if (role == CohortMentorMapping.Role.MENTOR) {
+                    cohort.setPrimaryMentor(userOpt.orElse(null));
+                } else if (role == CohortMentorMapping.Role.BUDDY_MENTOR) {
+                    cohort.setBuddyMentor(userOpt.orElse(null));
                 }
+                cohortRepository.save(cohort);
             });
         });
     }

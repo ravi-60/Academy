@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 public class EffortDetailDTO {
     private BigDecimal hours;
     private String notes;
+    private String mode;
+    private String reasonVirtual;
 
     public EffortDetailDTO() {
     }
@@ -28,5 +30,21 @@ public class EffortDetailDTO {
 
     public void setNotes(String notes) {
         this.notes = notes;
+    }
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
+
+    public String getReasonVirtual() {
+        return reasonVirtual;
+    }
+
+    public void setReasonVirtual(String reasonVirtual) {
+        this.reasonVirtual = reasonVirtual;
     }
 }

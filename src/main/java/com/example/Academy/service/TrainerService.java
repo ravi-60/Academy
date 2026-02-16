@@ -5,6 +5,8 @@ import com.example.Academy.entity.CohortTrainerMapping;
 import com.example.Academy.repository.TrainerRepository;
 import com.example.Academy.repository.CohortTrainerMappingRepository;
 import com.example.Academy.repository.CohortRepository;
+import com.example.Academy.repository.UserRepository;
+import com.example.Academy.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +26,9 @@ public class TrainerService {
 
     @Autowired
     private CohortRepository cohortRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     public List<Trainer> getAllTrainers() {
         return trainerRepository.findAll();
@@ -63,21 +68,32 @@ public class TrainerService {
     public void assignTrainerToCohort(Long trainerId, Long cohortId) {
         trainerRepository.findById(trainerId).ifPresent(trainer -> {
             cohortRepository.findById(cohortId).ifPresent(cohort -> {
-                if (!mappingRepository.existsByCohortIdAndTrainerId(cohortId, trainerId)) {
-                    CohortTrainerMapping mapping = new CohortTrainerMapping();
-                    mapping.setCohort(cohort);
-                    mapping.setTrainer(trainer);
+                // Determine target role
+                CohortTrainerMapping.Role role = (trainer.getTrainerType() == Trainer.TrainerType.behavioral)
+                        ? CohortTrainerMapping.Role.BH_TRAINER
+                        : CohortTrainerMapping.Role.TRAINER;
 
-                    // Set role based on trainer's profession
-                    if (trainer.getTrainerType() == Trainer.TrainerType.behavioral) {
-                        mapping.setRole(CohortTrainerMapping.Role.BH_TRAINER);
-                    } else {
-                        mapping.setRole(CohortTrainerMapping.Role.TRAINER);
-                    }
+                // 1. Remove ANY existing mapping for this cohort and role (Enforce single
+                // assignment)
+                mappingRepository.deleteByCohortIdAndRole(cohortId, role);
 
-                    mapping.setCreatedAt(LocalDateTime.now());
-                    mappingRepository.save(mapping);
+                // 2. Add new mapping
+                CohortTrainerMapping mapping = new CohortTrainerMapping();
+                mapping.setCohort(cohort);
+                mapping.setTrainer(trainer);
+                mapping.setRole(role);
+                mapping.setCreatedAt(LocalDateTime.now());
+                mappingRepository.save(mapping);
+
+                // 3. Synchronize with Cohort entity (Update primary fields used as fallbacks)
+                // We lookup if there is a User record for this trainer's empId
+                Optional<User> userOpt = userRepository.findByEmpId(trainer.getEmpId());
+                if (role == CohortTrainerMapping.Role.TRAINER) {
+                    cohort.setPrimaryTrainer(userOpt.orElse(null));
+                } else if (role == CohortTrainerMapping.Role.BH_TRAINER) {
+                    cohort.setBehavioralTrainer(userOpt.orElse(null));
                 }
+                cohortRepository.save(cohort);
             });
         });
     }

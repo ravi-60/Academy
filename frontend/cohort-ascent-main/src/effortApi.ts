@@ -45,6 +45,8 @@ export interface WeeklySummary {
 export interface EffortDetail {
   hours: number;
   notes: string;
+  mode?: 'VIRTUAL' | 'IN_PERSON';
+  reasonVirtual?: string;
 }
 
 export interface DayLog {

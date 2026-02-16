@@ -4,6 +4,10 @@ import com.example.Academy.entity.Cohort;
 import com.example.Academy.entity.StakeholderEffort;
 import com.example.Academy.entity.User;
 import com.example.Academy.entity.WeeklySummary;
+import com.example.Academy.entity.CohortTrainerMapping;
+import com.example.Academy.entity.CohortMentorMapping;
+import com.example.Academy.repository.CohortTrainerMappingRepository;
+import com.example.Academy.repository.CohortMentorMappingRepository;
 import com.example.Academy.repository.CohortRepository;
 import com.example.Academy.repository.StakeholderEffortRepository;
 import com.example.Academy.repository.UserRepository;
@@ -39,6 +43,12 @@ public class EffortService {
 
     @Autowired
     private WeeklySummaryRepository weeklySummaryRepository;
+
+    @Autowired
+    private CohortTrainerMappingRepository trainerMappingRepository;
+
+    @Autowired
+    private CohortMentorMappingRepository mentorMappingRepository;
 
     @Autowired
     private EmailService emailService;
@@ -224,31 +234,52 @@ public class EffortService {
                 if (dayLog.isHoliday())
                     continue;
 
+                // Cumulative Validation: Sum of all roles for this day should not exceed 9
+                // hours
+                BigDecimal dayTotal = BigDecimal.ZERO;
+                if (dayLog.getTechnicalTrainer() != null && dayLog.getTechnicalTrainer().getHours() != null)
+                    dayTotal = dayTotal.add(dayLog.getTechnicalTrainer().getHours());
+                if (dayLog.getMentor() != null && dayLog.getMentor().getHours() != null)
+                    dayTotal = dayTotal.add(dayLog.getMentor().getHours());
+                if (dayLog.getBuddyMentor() != null && dayLog.getBuddyMentor().getHours() != null)
+                    dayTotal = dayTotal.add(dayLog.getBuddyMentor().getHours());
+                if (dayLog.getBehavioralTrainer() != null && dayLog.getBehavioralTrainer().getHours() != null)
+                    dayTotal = dayTotal.add(dayLog.getBehavioralTrainer().getHours());
+
+                if (dayTotal.compareTo(BigDecimal.valueOf(9)) > 0) {
+                    throw new RuntimeException("Total cumulative effort hours for " + dayLog.getDate()
+                            + " cannot exceed 9 hours (Found: " + dayTotal + "h)");
+                }
+
                 // Trainer Log
                 if (dayLog.getTechnicalTrainer() != null && dayLog.getTechnicalTrainer().getHours() != null
                         && dayLog.getTechnicalTrainer().getHours().compareTo(BigDecimal.ZERO) > 0) {
-                    saveDayEffort(cohort, cohort.getPrimaryTrainer(), StakeholderEffort.Role.TRAINER,
+                    saveDayEffort(cohort, resolveUserForRole(cohort, StakeholderEffort.Role.TRAINER),
+                            StakeholderEffort.Role.TRAINER,
                             dayLog.getDate(), dayLog.getTechnicalTrainer(), submittedBy);
                 }
 
                 // Mentor Log
                 if (dayLog.getMentor() != null && dayLog.getMentor().getHours() != null
                         && dayLog.getMentor().getHours().compareTo(BigDecimal.ZERO) > 0) {
-                    saveDayEffort(cohort, cohort.getPrimaryMentor(), StakeholderEffort.Role.MENTOR,
+                    saveDayEffort(cohort, resolveUserForRole(cohort, StakeholderEffort.Role.MENTOR),
+                            StakeholderEffort.Role.MENTOR,
                             dayLog.getDate(), dayLog.getMentor(), submittedBy);
                 }
 
                 // Buddy Mentor Log
                 if (dayLog.getBuddyMentor() != null && dayLog.getBuddyMentor().getHours() != null
                         && dayLog.getBuddyMentor().getHours().compareTo(BigDecimal.ZERO) > 0) {
-                    saveDayEffort(cohort, cohort.getBuddyMentor(), StakeholderEffort.Role.BUDDY_MENTOR,
+                    saveDayEffort(cohort, resolveUserForRole(cohort, StakeholderEffort.Role.BUDDY_MENTOR),
+                            StakeholderEffort.Role.BUDDY_MENTOR,
                             dayLog.getDate(), dayLog.getBuddyMentor(), submittedBy);
                 }
 
                 // Behavioral Trainer Log
                 if (dayLog.getBehavioralTrainer() != null && dayLog.getBehavioralTrainer().getHours() != null
                         && dayLog.getBehavioralTrainer().getHours().compareTo(BigDecimal.ZERO) > 0) {
-                    saveDayEffort(cohort, cohort.getBehavioralTrainer(), StakeholderEffort.Role.BH_TRAINER,
+                    saveDayEffort(cohort, resolveUserForRole(cohort, StakeholderEffort.Role.BH_TRAINER),
+                            StakeholderEffort.Role.BH_TRAINER,
                             dayLog.getDate(), dayLog.getBehavioralTrainer(), submittedBy);
                 }
             }
@@ -321,7 +352,16 @@ public class EffortService {
 
         effort.setTrainerMentor(actualStakeholder);
         effort.setRole(role);
-        effort.setMode(StakeholderEffort.Mode.IN_PERSON);
+
+        // Handle Mode (Virtual/In-Person)
+        if (detail.getMode() != null && detail.getMode().equalsIgnoreCase("VIRTUAL")) {
+            effort.setMode(StakeholderEffort.Mode.VIRTUAL);
+            effort.setReasonVirtual(detail.getReasonVirtual());
+        } else {
+            effort.setMode(StakeholderEffort.Mode.IN_PERSON);
+            effort.setReasonVirtual(null);
+        }
+
         effort.setAreaOfWork(
                 detail.getNotes() != null && !detail.getNotes().isEmpty() ? detail.getNotes() : "Daily effort logging");
         effort.setEffortHours(detail.getHours());
@@ -332,6 +372,46 @@ public class EffortService {
         effort.setCreatedAt(LocalDateTime.now());
 
         effortRepository.save(effort);
+    }
+
+    private User resolveUserForRole(Cohort cohort, StakeholderEffort.Role role) {
+        // Try mapping tables first (Synchronous with what the UI shows)
+        if (role == StakeholderEffort.Role.TRAINER || role == StakeholderEffort.Role.BH_TRAINER) {
+            List<CohortTrainerMapping> mappings = trainerMappingRepository.findByCohortId(cohort.getId());
+            CohortTrainerMapping.Role targetRole = (role == StakeholderEffort.Role.TRAINER)
+                    ? CohortTrainerMapping.Role.TRAINER
+                    : CohortTrainerMapping.Role.BH_TRAINER;
+
+            return mappings.stream()
+                    .filter(m -> m.getRole() == targetRole)
+                    .findFirst()
+                    .map(m -> userRepository.findByEmpId(m.getTrainer().getEmpId()).orElseGet(() -> {
+                        // Fallback to cohort defaults if no User record exists for mapping
+                        return (role == StakeholderEffort.Role.TRAINER) ? cohort.getPrimaryTrainer()
+                                : cohort.getBehavioralTrainer();
+                    }))
+                    .orElse((role == StakeholderEffort.Role.TRAINER) ? cohort.getPrimaryTrainer()
+                            : cohort.getBehavioralTrainer());
+        }
+
+        if (role == StakeholderEffort.Role.MENTOR || role == StakeholderEffort.Role.BUDDY_MENTOR) {
+            List<CohortMentorMapping> mappings = mentorMappingRepository.findByCohortId(cohort.getId());
+            CohortMentorMapping.Role targetRole = (role == StakeholderEffort.Role.MENTOR)
+                    ? CohortMentorMapping.Role.MENTOR
+                    : CohortMentorMapping.Role.BUDDY_MENTOR;
+
+            return mappings.stream()
+                    .filter(m -> m.getRole() == targetRole)
+                    .findFirst()
+                    .map(m -> userRepository.findByEmpId(m.getMentor().getEmpId()).orElseGet(() -> {
+                        return (role == StakeholderEffort.Role.MENTOR) ? cohort.getPrimaryMentor()
+                                : cohort.getBuddyMentor();
+                    }))
+                    .orElse((role == StakeholderEffort.Role.MENTOR) ? cohort.getPrimaryMentor()
+                            : cohort.getBuddyMentor());
+        }
+
+        return null;
     }
 
     private void validateSubmissionWindow(LocalDate activityDate) {

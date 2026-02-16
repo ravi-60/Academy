@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -11,7 +12,11 @@ import {
     Layout,
     Clock,
     ShieldCheck,
-    AlertCircle
+    AlertCircle,
+    Sparkles,
+    ArrowLeft,
+    Target,
+    Zap
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -83,16 +88,25 @@ export const ReportDownloadModal = ({ isOpen, onClose, initialCohortId }: Report
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <AnimatePresence>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/40 backdrop-blur-md">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                {/* Unified Backdrop */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                    className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+                />
+
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="w-full max-w-2xl"
+                    className="relative w-full max-w-2xl"
                 >
-                    <GlassCard className="relative overflow-hidden border-primary/20 shadow-2xl">
+                    <GlassCard className="relative overflow-hidden border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-slate-900/90 backdrop-blur-2xl">
                         {/* Header Gradient */}
                         <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary via-neon-blue to-primary opacity-80" />
 
@@ -119,56 +133,74 @@ export const ReportDownloadModal = ({ isOpen, onClose, initialCohortId }: Report
                             <div className="grid gap-8">
                                 {/* 1. Cohort Selection */}
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Layout className="h-3 w-3" /> Select Target Cohort
+                                    <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.25em] flex items-center gap-2">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),1)]" />
+                                        Intelligence Node
                                     </label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                        {cohorts.map((cohort) => (
-                                            <button
-                                                key={cohort.id}
-                                                onClick={() => setSelectedCohortId(cohort.id)}
-                                                className={cn(
-                                                    "flex flex-col items-start p-4 rounded-2xl border transition-all text-left group",
-                                                    selectedCohortId === cohort.id
-                                                        ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] ring-1 ring-primary/20"
-                                                        : "bg-muted/5 border-border/40 hover:border-primary/40 hover:bg-muted/10"
-                                                )}
+
+                                    <AnimatePresence mode="wait">
+                                        {selectedCohort && (
+                                            <motion.div
+                                                key="selected"
+                                                initial={{ opacity: 0, scale: 0.98 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="relative group p-6 rounded-[2rem] bg-slate-950/40 border border-primary/20 shadow-inner"
                                             >
-                                                <span className={cn(
-                                                    "text-xs font-black uppercase tracking-widest mb-1",
-                                                    selectedCohortId === cohort.id ? "text-primary" : "text-muted-foreground"
-                                                )}>
-                                                    {cohort.skill}
-                                                </span>
-                                                <span className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{cohort.code}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
+                                                        <Layout className="h-8 w-8" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="text-2xl font-black text-white tracking-tighter leading-none">{selectedCohort.code}</h4>
+                                                            <Sparkles className="h-3.5 w-3.5 text-primary/40" />
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[9px] font-black uppercase tracking-widest border border-primary/20">
+                                                                {selectedCohort.skill}
+                                                            </span>
+                                                            <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{selectedCohort.bu} NODE</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
 
                                 {/* 2. Date Range */}
-                                <div className="grid sm:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <Calendar className="h-3 w-3" /> Start Date
+                                <div className="grid sm:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                                            <Calendar className="h-3 w-3 text-primary/60" /> Start Cycle
                                         </label>
-                                        <input
-                                            type="date"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full bg-background/40 border border-border/40 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-                                        />
+                                        <div className="relative group/date">
+                                            <input
+                                                type="date"
+                                                value={startDate}
+                                                onChange={(e) => setStartDate(e.target.value)}
+                                                className="w-full bg-background/40 border border-border/40 rounded-[1.25rem] px-5 py-4 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-mono"
+                                            />
+                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-20 group-hover/date:opacity-100 transition-opacity">
+                                                <Target className="h-4 w-4 text-primary" />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
-                                            <Calendar className="h-3 w-3" /> End Date
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] flex items-center gap-2">
+                                            <Calendar className="h-3 w-3 text-primary/60" /> Termination
                                         </label>
-                                        <input
-                                            type="date"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                            className="w-full bg-background/40 border border-border/40 rounded-xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
-                                        />
+                                        <div className="relative group/date">
+                                            <input
+                                                type="date"
+                                                value={endDate}
+                                                onChange={(e) => setEndDate(e.target.value)}
+                                                className="w-full bg-background/40 border border-border/40 rounded-[1.25rem] px-5 py-4 text-sm font-black focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-mono"
+                                            />
+                                            <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-20 group-hover/date:opacity-100 transition-opacity">
+                                                <Zap className="h-4 w-4 text-primary" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -258,6 +290,7 @@ export const ReportDownloadModal = ({ isOpen, onClose, initialCohortId }: Report
                     </GlassCard>
                 </motion.div>
             </div>
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };

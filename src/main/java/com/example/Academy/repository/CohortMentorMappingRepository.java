@@ -15,5 +15,7 @@ public interface CohortMentorMappingRepository extends JpaRepository<CohortMento
 
     void deleteByCohortIdAndMentorId(Long cohortId, Long mentorId);
 
+    void deleteByCohortIdAndRole(Long cohortId, CohortMentorMapping.Role role);
+
     void deleteByMentorId(Long mentorId);
 }
