@@ -20,6 +20,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 import { useCohortStore, Cohort } from '@/stores/cohortStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -30,6 +31,7 @@ import { GradientButton } from '@/components/ui/GradientButton';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { AddCohortModal } from '@/components/modals/AddCohortModal';
 import { CSVUploadModal } from '@/components/modals/CSVUploadModal';
+import { GlobalExportModal } from '@/components/modals/GlobalExportModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +47,7 @@ export const Cohorts = () => {
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [showAddCohort, setShowAddCohort] = useState(false);
   const [showCSVUpload, setShowCSVUpload] = useState(false);
+  const [showGlobalExport, setShowGlobalExport] = useState(false);
   const [selectedCohort, setSelectedCohort] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuthStore();
@@ -254,6 +257,14 @@ export const Cohorts = () => {
                 onClick={() => setShowCSVUpload(true)}
               >
                 Import CSV
+              </GradientButton>
+              <GradientButton
+                variant="outline"
+                className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+                icon={<Download className="h-5 w-5" />}
+                onClick={() => setShowGlobalExport(true)}
+              >
+                Download Log Efforts
               </GradientButton>
               <GradientButton
                 variant="primary"
@@ -518,6 +529,11 @@ export const Cohorts = () => {
         title="Import Cohorts"
         requiredColumns={['Cohort Code', 'Cohort Name', 'Business Unit', 'Service Line', 'SBU', 'Skill', 'Location', 'Start Date', 'End Date']}
         optionalColumns={['Assign Coach']}
+      />
+
+      <GlobalExportModal
+        isOpen={showGlobalExport}
+        onClose={() => setShowGlobalExport(false)}
       />
     </motion.div>
   );

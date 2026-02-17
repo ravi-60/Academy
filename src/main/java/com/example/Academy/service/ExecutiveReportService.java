@@ -2,6 +2,9 @@ package com.example.Academy.service;
 
 import com.example.Academy.dto.report.ExecutiveReportData;
 import com.example.Academy.entity.Cohort;
+import com.example.Academy.entity.User;
+import com.example.Academy.entity.Trainer;
+import com.example.Academy.entity.Mentor;
 import com.example.Academy.entity.StakeholderEffort;
 import com.example.Academy.entity.WeeklySummary;
 import com.example.Academy.repository.CohortRepository;
@@ -165,8 +168,10 @@ public class ExecutiveReportService {
                                                 .role(resolveRoleName(e))
                                                 .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "Virtual"
                                                                 : "In-Person")
-                                                .reasonVirtual(e.getReasonVirtual() != null ? e.getReasonVirtual()
-                                                                : "N/A")
+                                                .reasonVirtual(e.getMode() == StakeholderEffort.Mode.VIRTUAL
+                                                                ? (e.getReasonVirtual() != null ? e.getReasonVirtual()
+                                                                                : "N/A")
+                                                                : "")
                                                 .areaOfVisit(e.getAreaOfWork())
                                                 .effortHours(e.getEffortHours())
                                                 .date(e.getEffortDate())
@@ -196,6 +201,131 @@ public class ExecutiveReportService {
                                 .buddyMentorHours(buddyMentorHours)
                                 .dailyLogs(dailyLogs)
                                 .detailedLogs(detailedLogs)
+                                .build();
+        }
+
+        @Transactional(readOnly = true)
+        public byte[] generateGlobalReport(int month, int year) throws IOException {
+                LocalDate startDate = LocalDate.of(year, month, 1);
+                LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+                return generateGlobalReportByRange(startDate, endDate);
+        }
+
+        @Transactional(readOnly = true)
+        public byte[] generateGlobalReportByRange(LocalDate startDate, LocalDate endDate) throws IOException {
+                List<StakeholderEffort> allEfforts = effortRepository.findByEffortDateBetween(startDate, endDate);
+                List<ExecutiveReportData.DetailedEffortLog> detailedLogs = new ArrayList<>();
+
+                List<StakeholderEffort> validEfforts = allEfforts.stream()
+                                .filter(e -> e.getTrainerMentor() != null)
+                                .collect(Collectors.toList());
+
+                for (StakeholderEffort effort : validEfforts) {
+                        detailedLogs.add(mapToDetailedLog(effort.getCohort(), effort));
+                }
+
+                detailedLogs.sort(Comparator.comparing(ExecutiveReportData.DetailedEffortLog::getCohortCode)
+                                .thenComparing(ExecutiveReportData.DetailedEffortLog::getDate));
+
+                ExecutiveReportData data = ExecutiveReportData.builder()
+                                .detailedLogs(detailedLogs)
+                                .build();
+
+                return ExcelExecutiveReportGenerator.generate(data);
+        }
+
+        private ExecutiveReportData.DetailedEffortLog mapToDetailedLog(Cohort cohort, StakeholderEffort e) {
+                return ExecutiveReportData.DetailedEffortLog.builder()
+                                .cohortCode(cohort.getCode())
+                                .bu(cohort.getBu())
+                                .skill(cohort.getSkill())
+                                .activeGencCount(cohort.getActiveGencCount())
+                                .trainingLocation(cohort.getTrainingLocation())
+                                .mapped(resolveMappedType(e, cohort))
+                                .mentorId(resolveStakeholderId(e, cohort))
+                                .mentorName(resolveStakeholderName(e, cohort))
+                                .role(resolveRoleName(e))
+                                .mode(e.getMode() == StakeholderEffort.Mode.VIRTUAL ? "Virtual" : "In-Person")
+                                .reasonVirtual(e.getMode() == StakeholderEffort.Mode.VIRTUAL
+                                                ? (e.getReasonVirtual() != null ? e.getReasonVirtual() : "N/A")
+                                                : "")
+                                .areaOfVisit(e.getAreaOfWork())
+                                .effortHours(e.getEffortHours())
+                                .date(e.getEffortDate())
+                                .month(e.getEffortMonth())
+                                .updatedBy(e.getUpdatedBy() != null ? e.getUpdatedBy().getName() : "N/A")
+                                .updatedDate(e.getUpdatedDate())
+                                .build();
+        }
+
+        private ExecutiveReportData.DetailedEffortLog mapToPlaceholder(Cohort cohort, Trainer trainer,
+                        StakeholderEffort.Role role, String month) {
+                return ExecutiveReportData.DetailedEffortLog.builder()
+                                .cohortCode(cohort.getCode())
+                                .bu(cohort.getBu())
+                                .skill(cohort.getSkill())
+                                .activeGencCount(cohort.getActiveGencCount())
+                                .trainingLocation(cohort.getTrainingLocation())
+                                .mapped(trainer.isInternal() ? "INTERNAL" : "EXTERNAL")
+                                .mentorId(trainer.getEmpId())
+                                .mentorName(trainer.getName())
+                                .role(role == StakeholderEffort.Role.TRAINER ? "SME"
+                                                : role == StakeholderEffort.Role.MENTOR ? "Mentor"
+                                                                : role == StakeholderEffort.Role.BUDDY_MENTOR ? "Buddy"
+                                                                                : "MFRP")
+                                .mode("N/A")
+                                .reasonVirtual("No activity logged for this period")
+                                .areaOfVisit("N/A")
+                                .effortHours(BigDecimal.ZERO)
+                                .month(month)
+                                .updatedBy("System")
+                                .build();
+        }
+
+        private ExecutiveReportData.DetailedEffortLog mapToPlaceholder(Cohort cohort, Mentor mentor,
+                        StakeholderEffort.Role role, String month) {
+                return ExecutiveReportData.DetailedEffortLog.builder()
+                                .cohortCode(cohort.getCode())
+                                .bu(cohort.getBu())
+                                .skill(cohort.getSkill())
+                                .activeGencCount(cohort.getActiveGencCount())
+                                .trainingLocation(cohort.getTrainingLocation())
+                                .mapped(mentor.isInternal() ? "INTERNAL" : "EXTERNAL")
+                                .mentorId(mentor.getEmpId())
+                                .mentorName(mentor.getName())
+                                .role(role == StakeholderEffort.Role.TRAINER ? "SME"
+                                                : role == StakeholderEffort.Role.MENTOR ? "Mentor"
+                                                                : role == StakeholderEffort.Role.BUDDY_MENTOR ? "Buddy"
+                                                                                : "MFRP")
+                                .mode("N/A")
+                                .reasonVirtual("No activity logged for this period")
+                                .areaOfVisit("N/A")
+                                .effortHours(BigDecimal.ZERO)
+                                .month(month)
+                                .updatedBy("System")
+                                .build();
+        }
+
+        private ExecutiveReportData.DetailedEffortLog mapToGenericPlaceholder(Cohort cohort, String month) {
+                User primary = cohort.getPrimaryTrainer();
+                return ExecutiveReportData.DetailedEffortLog.builder()
+                                .cohortCode(cohort.getCode())
+                                .bu(cohort.getBu())
+                                .skill(cohort.getSkill())
+                                .activeGencCount(cohort.getActiveGencCount())
+                                .trainingLocation(cohort.getTrainingLocation())
+                                .mapped((primary != null && primary.getEmployeeType() != null)
+                                                ? primary.getEmployeeType().name()
+                                                : "N/A")
+                                .mentorId(primary != null ? primary.getEmpId() : "N/A")
+                                .mentorName(primary != null ? primary.getName() : "UNASSIGNED")
+                                .role("SME (Primary)")
+                                .mode("N/A")
+                                .reasonVirtual("No team mapping found")
+                                .areaOfVisit("N/A")
+                                .effortHours(BigDecimal.ZERO)
+                                .month(month)
+                                .updatedBy("System")
                                 .build();
         }
 
@@ -273,39 +403,65 @@ public class ExecutiveReportService {
 
         private String resolveStakeholderId(StakeholderEffort e, Cohort cohort) {
                 if (e.getRole() == StakeholderEffort.Role.TRAINER || e.getRole() == StakeholderEffort.Role.BH_TRAINER) {
-                        return trainerMappingRepository.findByCohortId(cohort.getId()).stream()
+                        Optional<String> id = trainerMappingRepository.findByCohortId(cohort.getId()).stream()
                                         .filter(m -> m.getRole().name().equals(e.getRole().name()))
                                         .findFirst()
-                                        .map(m -> m.getTrainer().getEmpId())
-                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A");
+                                        .map(m -> m.getTrainer().getEmpId());
+                        if (id.isPresent())
+                                return id.get();
                 }
                 if (e.getRole() == StakeholderEffort.Role.MENTOR
                                 || e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR) {
-                        return mentorMappingRepository.findByCohortId(cohort.getId()).stream()
+                        Optional<String> id = mentorMappingRepository.findByCohortId(cohort.getId()).stream()
                                         .filter(m -> m.getRole().name().equals(e.getRole().name()))
                                         .findFirst()
-                                        .map(m -> m.getMentor().getEmpId())
-                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A");
+                                        .map(m -> m.getMentor().getEmpId());
+                        if (id.isPresent())
+                                return id.get();
                 }
-                return e.getTrainerMentor() != null ? e.getTrainerMentor().getEmpId() : "N/A";
+
+                if (e.getTrainerMentor() != null) {
+                        String empId = e.getTrainerMentor().getEmpId();
+                        if ("2457131".equals(empId) || "2457".equals(empId) || "coach2001".equals(empId)) {
+                                if (e.getUpdatedBy() != null)
+                                        return e.getUpdatedBy().getEmpId();
+                        }
+                        return e.getTrainerMentor().getEmpId();
+                }
+
+                return "N/A";
         }
 
         private String resolveStakeholderName(StakeholderEffort e, Cohort cohort) {
+                // 1. Primary Source: Cohort Mappings (What's in the Dashboard)
                 if (e.getRole() == StakeholderEffort.Role.TRAINER || e.getRole() == StakeholderEffort.Role.BH_TRAINER) {
-                        return trainerMappingRepository.findByCohortId(cohort.getId()).stream()
+                        Optional<String> name = trainerMappingRepository.findByCohortId(cohort.getId()).stream()
                                         .filter(m -> m.getRole().name().equals(e.getRole().name()))
                                         .findFirst()
-                                        .map(m -> m.getTrainer().getName())
-                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A");
+                                        .map(m -> m.getTrainer().getName());
+                        if (name.isPresent())
+                                return name.get();
                 }
                 if (e.getRole() == StakeholderEffort.Role.MENTOR
                                 || e.getRole() == StakeholderEffort.Role.BUDDY_MENTOR) {
-                        return mentorMappingRepository.findByCohortId(cohort.getId()).stream()
+                        Optional<String> name = mentorMappingRepository.findByCohortId(cohort.getId()).stream()
                                         .filter(m -> m.getRole().name().equals(e.getRole().name()))
                                         .findFirst()
-                                        .map(m -> m.getMentor().getName())
-                                        .orElse(e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A");
+                                        .map(m -> m.getMentor().getName());
+                        if (name.isPresent())
+                                return name.get();
                 }
-                return e.getTrainerMentor() != null ? e.getTrainerMentor().getName() : "N/A";
+
+                // 2. Secondary Source: Actual Log Creator (If trainer_mentor is a system dummy)
+                if (e.getTrainerMentor() != null) {
+                        String empId = e.getTrainerMentor().getEmpId();
+                        if ("2457131".equals(empId) || "2457".equals(empId) || "coach2001".equals(empId)) {
+                                if (e.getUpdatedBy() != null)
+                                        return e.getUpdatedBy().getName();
+                        }
+                        return e.getTrainerMentor().getName();
+                }
+
+                return "N/A";
         }
 }

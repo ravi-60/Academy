@@ -34,5 +34,7 @@ export const reportApi = {
   getRecentActivities: (coachId?: number) => api.get<any[]>('/reports/recent-activities', { params: { coachId } }),
   exportReport: (params: { cohortId: number; startDate: string; endDate: string; format: string }) =>
     api.get('/reports/export', { params, responseType: 'blob' }),
+  exportGlobalReport: (params: { month?: number; year?: number; startDate?: string; endDate?: string }) =>
+    api.get('/reports/global-export', { params, responseType: 'blob' }),
   getSubmissionCount: () => api.get<number>('/reports/submission-count'),
 };

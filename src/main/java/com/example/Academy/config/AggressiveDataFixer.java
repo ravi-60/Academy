@@ -44,90 +44,9 @@ public class AggressiveDataFixer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println("--- STARTING AGGRESSIVE DATABASE SYNCHRONIZATION (WITH FK REMOVAL) ---");
-
-        // 1. Programmatically drop the offending Foreign Key to stop the "Constraint
-        // Fails" error
-        try {
-            System.out.println("Automating database schema updates...");
-            // Drop old FK (Note: name corrected to match error precisely)
-            jdbcTemplate
-                    .execute("ALTER TABLE academy_db.stakeholder_efforts DROP FOREIGN KEY FKer08nm1op374ogjrsgqalx4of");
-            // Change column type to store EmpID (String)
-            jdbcTemplate.execute("ALTER TABLE academy_db.stakeholder_efforts MODIFY trainer_mentor_id VARCHAR(255)");
-            System.out.println("Database schema successfully adjusted.");
-        } catch (Exception e) {
-            System.out.println("Note: Schema already adjusted or constraint not found. Continuing...");
-        }
-
-        // 2. Untangle the Coach User (Restore emp_id if it was changed to 2457)
-        Optional<User> coachOpt = userRepository.findByEmail("coach1@academy.com");
-        if (coachOpt.isPresent()) {
-            User coach = coachOpt.get();
-            if ("2457".equals(coach.getEmpId())) {
-                System.out.println("Restoring Coach's emp_id to coach2001...");
-                coach.setEmpId("coach2001");
-                userRepository.save(coach);
-            }
-        }
-
-        // 3. Ensure specific Trainers and Mentors exist as separate records
-        User john = getOrUpdateUser("john", "john", "john@academy.com", "2457", User.Role.COACH);
-        User nagireddy = getOrUpdateUser("nagireddy", "Nagireddy Sai Ravi Teja", "nagireddy@academy.com", "2457131",
-                User.Role.COACH);
-
-        // 3a. Ensure Trainer/Mentor table records exist for them
-        getOrUpdateTrainerRecord(john, Trainer.TrainerType.technical, "react");
-        getOrUpdateMentorRecord(nagireddy, Mentor.MentorType.mentor, "java");
-
-        // 4. Fix all Cohorts - Force defaults to these specific people
-        List<Cohort> cohorts = cohortRepository.findAll();
-        for (Cohort cohort : cohorts) {
-            boolean updated = false;
-            // Force assign trainers/mentors to John/Nagireddy for all cohorts where coach
-            // is erroneously assigned
-            if (cohort.getPrimaryTrainer() == null || "coach2001".equals(cohort.getPrimaryTrainer().getEmpId())) {
-                System.out.println("Assigning Technical Trainer (john) to Cohort " + cohort.getCode());
-                cohort.setPrimaryTrainer(john);
-                updated = true;
-            }
-            if (cohort.getPrimaryMentor() == null || "coach2001".equals(cohort.getPrimaryMentor().getEmpId())) {
-                System.out.println("Assigning Primary Mentor (Nagireddy) to Cohort " + cohort.getCode());
-                cohort.setPrimaryMentor(nagireddy);
-                updated = true;
-            }
-            if (updated) {
-                cohortRepository.save(cohort);
-            }
-        }
-
-        // 5. Force Repair of StakeholderEffort History (Using emp_id mappings)
-        List<StakeholderEffort> efforts = effortRepository.findAll();
-        int fixedCount = 0;
-        for (StakeholderEffort effort : efforts) {
-            User currentStakeholder = effort.getTrainerMentor();
-            User correctedStakeholder = null;
-
-            // Rule: If it points to the Coach (ID 2 or empId coach2001) or is NULL, force
-            // it to the actual personnel
-            if (currentStakeholder == null || "coach2001".equals(currentStakeholder.getEmpId())) {
-                switch (effort.getRole()) {
-                    case TRAINER -> correctedStakeholder = effort.getCohort().getPrimaryTrainer();
-                    case MENTOR -> correctedStakeholder = effort.getCohort().getPrimaryMentor();
-                    case BUDDY_MENTOR -> correctedStakeholder = effort.getCohort().getBuddyMentor();
-                    case BH_TRAINER -> correctedStakeholder = effort.getCohort().getBehavioralTrainer();
-                }
-            }
-
-            if (correctedStakeholder != null && !correctedStakeholder.equals(currentStakeholder)) {
-                effort.setTrainerMentor(correctedStakeholder);
-                effortRepository.save(effort);
-                fixedCount++;
-            }
-        }
-
-        System.out.println("Aggressive repair complete: Fixed " + fixedCount + " effort records.");
-        System.out.println("--- AGGRESSIVE DATABASE SYNCHRONIZATION COMPLETE ---");
+        // Deactivated: Real data is now being used and this fixer interferes with user
+        // assignments.
+        // System.out.println("--- AGGRESSIVE DATABASE SYNCHRONIZATION SKIPPED ---");
     }
 
     private User getOrUpdateUser(String username, String name, String email, String empId, User.Role role) {

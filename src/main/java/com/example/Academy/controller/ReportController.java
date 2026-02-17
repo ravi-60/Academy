@@ -60,4 +60,32 @@ public class ReportController {
                 .contentType(mediaType)
                 .body(reportContent);
     }
+
+    @GetMapping("/global-export")
+    public ResponseEntity<byte[]> globalExportReport(
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate)
+            throws IOException {
+
+        byte[] reportContent;
+        String filename;
+
+        if (startDate != null && endDate != null) {
+            reportContent = executiveReportService.generateGlobalReportByRange(startDate, endDate);
+            filename = String.format("Global_Effort_Report_%s_to_%s.xlsx", startDate, endDate);
+        } else if (month != null && year != null) {
+            reportContent = executiveReportService.generateGlobalReport(month, year);
+            filename = String.format("Global_Effort_Report_%d_%02d.xlsx", year, month);
+        } else {
+            throw new IllegalArgumentException("Must provide either (month and year) or (startDate and endDate)");
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(reportContent);
+    }
 }

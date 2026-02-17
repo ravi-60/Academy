@@ -19,6 +19,9 @@ import {
   TrendingUp,
   Layout,
   AlertCircle,
+  AlertTriangle,
+  Circle,
+  X,
   Users,
   Search as SearchIcon,
   Filter,
@@ -26,7 +29,8 @@ import {
   FileText,
   Table as TableIcon,
   Activity,
-  ArrowUpDown
+  ArrowUpDown,
+  ShieldAlert
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { GradientButton } from '@/components/ui/GradientButton';
@@ -70,6 +74,7 @@ export const DailyEfforts = () => {
   const [savedDays, setSavedDays] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [isOverrideEdit, setIsOverrideEdit] = useState(false);
+  const [activeCell, setActiveCell] = useState<{ date: string, role: string } | null>(null);
 
   const { data: allCohorts = [] } = useCohorts();
   const { data: cohortDetail } = useCohort(selectedCohortId || 0);
@@ -310,11 +315,13 @@ export const DailyEfforts = () => {
       }
     });
     return {
-      tech,
-      behavioral,
-      mentor,
-      buddy,
-      total: tech + behavioral + mentor + buddy
+      total: tech + behavioral + mentor + buddy,
+      roles: {
+        TechnicalTraining: tech,
+        BehavioralSkills: behavioral,
+        Mentorship: mentor,
+        BuddyAssistance: buddy
+      }
     };
   }, [localDayLogs]);
 
@@ -323,7 +330,7 @@ export const DailyEfforts = () => {
       const currentLog = localDayLogs[date];
       if (currentLog) {
         // Calculate total hours excluding the current role being updated
-        const otherRolesHours = Object.entries(currentLog)
+        const otherRolesHours = Object.entries(currentLog || {})
           .filter(([key]) => key !== 'date' && key !== 'isHoliday' && key !== role)
           .reduce((sum, [_, detail]) => sum + Number((detail as any)?.hours || 0), 0);
 
@@ -470,7 +477,7 @@ export const DailyEfforts = () => {
           </div>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-10 max-w-[1400px] mx-auto w-full">
           {allowedCohorts.map((cohort, index) => {
             const today = startOfToday();
             const start = parseISO(cohort.startDate);
@@ -573,189 +580,122 @@ export const DailyEfforts = () => {
   return (
     <div className="min-h-screen">
       {/* 2. Enterprise Workflow UI */}
-      <div className="sticky top-16 z-30 flex flex-col sm:flex-row items-center justify-between gap-6 px-6 py-4 bg-background/60 backdrop-blur-xl border-b border-border/50">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setSelectedCohortId(null)}
-            className="p-2 rounded-xl bg-muted/30 hover:bg-primary/20 hover:text-primary transition-all group"
-          >
-            <ChevronLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-foreground">{cohortDetail?.code}</h1>
-              <span className="text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded border border-primary/20 tracking-widest uppercase">
-                Effort Workspace
-              </span>
+      <div className="sticky top-16 z-30 bg-background/80 backdrop-blur-2xl border-b border-border shadow-2xl">
+        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-8 px-8 py-6">
+          <div className="flex items-center gap-6">
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: -5 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setSelectedCohortId(null)}
+              className="h-12 w-12 flex items-center justify-center rounded-xl bg-muted/50 border border-border hover:bg-primary/20 hover:text-primary transition-all group shadow-xl"
+            >
+              <ChevronLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
+            </motion.button>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-black text-foreground tracking-tighter leading-none">{cohortDetail?.code}</h1>
+                <div className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 flex items-center gap-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[9px] font-black text-primary tracking-widest uppercase">
+                    Active
+                  </span>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground/80 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                <MapPin className="h-3 w-3 text-primary/70" /> {cohortDetail?.trainingLocation} <span className="opacity-20">|</span> {cohortDetail?.skill}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground font-bold uppercase tracking-tight flex items-center gap-2">
-              <MapPin className="h-3 w-3" /> {cohortDetail?.trainingLocation} • {cohortDetail?.skill}
-            </p>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <GradientButton
-            variant="ghost"
-            className={cn("gap-2", showHistory && "bg-primary/10 text-primary")}
-            onClick={() => setShowHistory(!showHistory)}
-            icon={<History className="h-4 w-4" />}
-          >
-            {showHistory ? "Back to Logs" : "View Log History"}
-          </GradientButton>
-          {!showHistory && (
-            <div className="flex items-center gap-3">
-              {isWeekCompleted && isEditableWindow && !isOverrideEdit && (
+          <div className="flex items-center gap-4">
+            <GradientButton
+              variant="ghost"
+              className={cn("gap-2 h-10 px-5 text-[10px] font-black transition-all border-border bg-muted/30 hover:bg-muted/50", showHistory && "bg-primary/10 text-primary border-primary/20")}
+              onClick={() => setShowHistory(!showHistory)}
+              icon={<History className="h-4 w-4" />}
+            >
+              HISTORY REPOSITORY
+            </GradientButton>
+            {!showHistory && (
+              <div className="flex items-center gap-3">
+                {isWeekCompleted && isEditableWindow && !isOverrideEdit && (
+                  <GradientButton
+                    variant="ghost"
+                    className="h-10 px-5 border-amber-500/20 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500 text-[10px] font-black"
+                    onClick={() => setIsOverrideEdit(true)}
+                    icon={<Activity className="h-4 w-4" />}
+                  >
+                    EDIT LOGS
+                  </GradientButton>
+                )}
                 <GradientButton
-                  variant="ghost"
-                  className="px-5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:border-amber-500"
-                  onClick={() => setIsOverrideEdit(true)}
-                  icon={<Activity className="h-4 w-4" />}
+                  variant="primary"
+                  className={cn("h-10 px-8 shadow-neon-blue font-black tracking-widest text-[10px]", isOverrideEdit && "bg-amber-500 hover:bg-amber-600 border-amber-400")}
+                  onClick={handleFinalSubmit}
+                  disabled={(isWeekCompleted && !isOverrideEdit) || submitWeeklyMutation.isPending}
+                  icon={isWeekCompleted && !isOverrideEdit ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                  iconPosition="right"
                 >
-                  Correct Logs
+                  {isWeekCompleted && !isOverrideEdit ? "LOCKED" : (isOverrideEdit ? "UPDATE" : "COMMIT LOGS")}
                 </GradientButton>
-              )}
-              <GradientButton
-                variant="primary"
-                className={cn("px-6 shadow-neon-blue", isOverrideEdit && "bg-amber-500 hover:bg-amber-600 border-amber-400")}
-                onClick={handleFinalSubmit}
-                disabled={(isWeekCompleted && !isOverrideEdit) || submitWeeklyMutation.isPending}
-                icon={isWeekCompleted && !isOverrideEdit ? <CheckCircle2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-                iconPosition="right"
-              >
-                {isWeekCompleted && !isOverrideEdit ? "Week Submitted" : (isOverrideEdit ? "Update Week" : "Submit Week")}
-              </GradientButton>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[280px,1fr] xl:grid-cols-[320px,1fr] gap-8 p-6 lg:p-8">
-        {/* 3. Weekly Timeline Panel (Left) - Now Sticky */}
+      <div className="max-w-[1400px] mx-auto w-full px-8 py-10 space-y-10">
+        {/* 3. Horizontal Sequence Navigator - Visible only in Logging Mode */}
         {!showHistory && (
-          <aside className="space-y-6 sticky top-[100px] self-start hidden lg:block">
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Weekly Timeline</h3>
-              <div className="flex items-center gap-2">
-                <div className="h-1 w-12 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${(calendarWeeks.filter(w => weeklySummaries.some(s => s.weekStartDate === format(w.startDate, 'yyyy-MM-dd'))).length / calendarWeeks.length) * 100}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-bold text-primary">
-                  {calendarWeeks.filter(w => weeklySummaries.some(s => s.weekStartDate === format(w.startDate, 'yyyy-MM-dd'))).length}/{calendarWeeks.length}
-                </p>
-              </div>
+          <div className="flex items-center gap-4 overflow-x-auto pb-4 custom-scrollbar">
+            <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2 bg-muted/50 border border-border rounded-2xl mr-4">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sequence Flow</span>
             </div>
+            {calendarWeeks.map((week, idx) => {
+              const weekStartStr = format(week.startDate, 'yyyy-MM-dd');
+              const isCompleted = weeklySummaries.some(s => s.weekStartDate === weekStartStr);
+              const isSelected = selectedWeek?.id === week.id;
+              const today = startOfToday();
+              const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+              const isLocked = !isSameDay(week.startDate, currentWeekStart) && !isSameDay(week.startDate, subWeeks(currentWeekStart, 1));
 
-            <div className="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-3 custom-scrollbar px-1">
-              {calendarWeeks.map((week) => {
-                const weekStartStr = format(week.startDate, 'yyyy-MM-dd');
-                const isCompleted = weeklySummaries.some(s => s.weekStartDate === weekStartStr);
-                const today = startOfToday();
-
-                // Allow Current Week and Previous Week
-                const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-                const previousWeekStart = subWeeks(currentWeekStart, 1);
-
-                // Check strictly if week.startDate matches either current or previous week start
-                const isCurrentWeek = isSameDay(week.startDate, currentWeekStart);
-                const isPreviousWeek = isSameDay(week.startDate, previousWeekStart);
-
-                // Locked if NOT current AND NOT previous week
-                // (Future weeks will be greater than current, Past weeks will be less than previous)
-                const isLocked = !isCurrentWeek && !isPreviousWeek;
-
-                const isActive = (isSameDay(today, week.startDate) || isAfter(today, week.startDate)) && (isSameDay(today, week.endDate) || isBefore(today, week.endDate));
-                const isSelected = selectedWeek?.id === week.id;
-
-                return (
-                  <TooltipProvider key={week.id}>
-                    <Tooltip delayDuration={300}>
-                      <TooltipTrigger asChild>
-                        <motion.button
-                          whileHover={!isLocked || isCompleted ? { x: 4 } : {}}
-                          whileTap={!isLocked || isCompleted ? { scale: 0.98 } : {}}
-                          disabled={isLocked && !isCompleted}
-                          onClick={() => setSelectedWeekId(week.id)}
-                          className={cn(
-                            "w-full text-left p-4 rounded-xl border transition-all duration-300 relative group",
-                            isSelected
-                              ? "bg-primary/15 border-primary/50 shadow-[0_0_25px_rgba(var(--primary-rgb),0.15)] ring-1 ring-primary/20"
-                              : "bg-card/30 border-border/40 hover:bg-card/50 hover:border-border/80",
-                            isLocked && !isCompleted && "opacity-30 cursor-not-allowed grayscale",
-                            isActive && !isCompleted && "border-primary/30"
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className={cn(
-                              "text-xs font-black uppercase tracking-wider transition-colors",
-                              isSelected ? "text-primary" : "text-foreground/70 group-hover:text-foreground"
-                            )}>
-                              Week {week.weekNumber}
-                            </span>
-                            {isCompleted ? (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <Check className="h-3 w-3" />
-                              </div>
-                            ) : isLocked ? (
-                              <Lock className="h-3 w-3 text-muted-foreground/50" />
-                            ) : isActive ? (
-                              <span className="flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <p className="text-[10px] font-bold text-muted-foreground/80 group-hover:text-muted-foreground transition-colors">
-                            {format(week.startDate, 'MMM dd')} — {format(week.endDate, 'MMM dd')}
-                          </p>
-
-                          {isSelected && !isCompleted && (
-                            <motion.div
-                              layoutId="active-indicator"
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_10px_rgba(var(--primary-rgb),0.8)]"
-                            />
-                          )}
-                        </motion.button>
-                      </TooltipTrigger>
-                      {isLocked && !isCompleted && (
-                        <TooltipPortal>
-                          <TooltipContent
-                            side="right"
-                            sideOffset={10}
-                            className="z-[100] bg-background/95 border-border/50 backdrop-blur-xl p-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-w-[280px]"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-                                <Lock className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-1">Mission Lockdown</p>
-                                <p className="text-xs text-muted-foreground font-bold leading-relaxed">
-                                  {isAfter(week.startDate, today)
-                                    ? `This lifecycle node unlocks on ${format(week.startDate, 'PPPP')}.`
-                                    : "Operational submission window for this node has expired."}
-                                </p>
-                              </div>
-                            </div>
-                            {/* Arrow decoration */}
-                            <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-2 h-2 bg-background border-l border-b border-border/50 rotate-45" />
-                          </TooltipContent>
-                        </TooltipPortal>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              })}
-            </div>
-          </aside>
+              return (
+                <button
+                  key={week.id}
+                  disabled={isLocked && !isCompleted}
+                  onClick={() => setSelectedWeekId(week.id)}
+                  className={cn(
+                    "flex-shrink-0 px-8 py-4 rounded-2xl border transition-all duration-300 flex flex-col items-center gap-1.5 group relative overflow-hidden",
+                    isSelected ? "bg-primary/10 border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.1)] -translate-y-1" :
+                      isCompleted ? "bg-emerald-500/5 border-emerald-500/20" :
+                        isLocked ? "bg-muted/40 border-border opacity-20 grayscale cursor-not-allowed" :
+                          "bg-muted/20 border-border hover:border-primary/20 hover:bg-muted/30"
+                  )}
+                >
+                  {isSelected && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-primary" />
+                  )}
+                  <span className={cn(
+                    "text-[8px] font-black uppercase tracking-[0.2em]",
+                    isSelected ? "text-primary" : "text-muted-foreground/80 group-hover:text-muted-foreground"
+                  )}>Week {week.weekNumber}</span>
+                  <p className={cn(
+                    "text-xs font-black tracking-tight whitespace-nowrap",
+                    isSelected ? "text-foreground" : "text-foreground/70 group-hover:text-foreground"
+                  )}>
+                    {format(week.startDate, 'MMM dd')} - {format(endOfWeek(week.startDate, { weekStartsOn: 1 }), 'MMM dd, yyyy')}
+                  </p>
+                  {isCompleted && (
+                    <Check className="h-3 w-3 text-emerald-400 mt-1" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
 
-        {/* 4. Daily Log Panel (Main Panel) */}
-        <div className={cn("space-y-10", showHistory && "lg:col-span-2 max-w-6xl mx-auto w-full")}>
+        <div className={cn("space-y-8 w-full mr-auto", showHistory && "overflow-hidden")}>
           <AnimatePresence mode="wait">
             {showHistory ? (
               <motion.div
@@ -771,7 +711,7 @@ export const DailyEfforts = () => {
                       <History className="h-8 w-8 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-white tracking-tight">Effort History</h3>
+                      <h3 className="text-2xl font-bold text-foreground tracking-tight">Effort History</h3>
                       <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider opacity-70">Verified audit log of compliance records</p>
                     </div>
                   </div>
@@ -839,7 +779,7 @@ export const DailyEfforts = () => {
                           <div>
                             <div className="flex items-center gap-3 mb-2">
                               <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">Entry Locked</span>
-                              <h4 className="text-xl font-bold text-white tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
+                              <h4 className="text-xl font-bold text-foreground tracking-tight">Week {calendarWeeks.find(w => format(w.startDate, 'yyyy-MM-dd') === summary.weekStartDate)?.weekNumber || '?'}</h4>
                             </div>
                             <p className="text-xs text-muted-foreground font-bold flex items-center gap-2">
                               <Calendar className="h-3.5 w-3.5 text-primary/60" />
@@ -888,8 +828,12 @@ export const DailyEfforts = () => {
 
                         <div className="flex items-center justify-between mt-auto pt-6 border-t border-border/30 relative z-10">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-neon-blue/10 flex items-center justify-center text-sm font-black text-primary border border-primary/20 shadow-inner">
-                              {summary.submittedBy?.charAt(0) || 'S'}
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-neon-blue/10 flex items-center justify-center text-sm font-black text-primary border border-primary/20 shadow-inner overflow-hidden">
+                              {summary.submittedByAvatar ? (
+                                <img src={summary.submittedByAvatar} alt={summary.submittedBy} className="h-full w-full object-cover" />
+                              ) : (
+                                summary.submittedBy?.charAt(0) || 'S'
+                              )}
                             </div>
                             <div>
                               <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-[0.1em] leading-none mb-1">Approved By</p>
@@ -1036,226 +980,294 @@ export const DailyEfforts = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-12"
               >
-                {/* Correction Mode Banner */}
-                {isOverrideEdit && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-8 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-amber-500/20 rounded-xl">
-                        <AlertCircle className="h-6 w-6 text-amber-500" />
+                {/* 5. Simplified Weekly Summary Strip */}
+                <div className="p-6 bg-card border-border rounded-2xl shadow-xl">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                    <div className="flex items-center gap-12 px-8 py-4">
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Weekly Performance Totals</p>
+                        <h4 className="text-4xl font-black text-foreground leading-none">
+                          {weekStats.total}
+                          <span className="text-xs ml-2 text-muted-foreground/30 uppercase tracking-widest font-bold">Total Hours</span>
+                        </h4>
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-amber-500 uppercase tracking-[0.2em]">Compliance Correction Active</p>
-                        <p className="text-[11px] text-amber-500/70 font-bold uppercase tracking-tight mt-1">You are modifying a historically locked record for Week {selectedWeek?.weekNumber}. Re-submission will overwrite existing telemetry.</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setIsOverrideEdit(false)}
-                      className="px-4 py-2 rounded-lg bg-amber-500/20 text-[10px] font-black uppercase text-amber-500 hover:bg-amber-500 hover:text-white transition-all tracking-widest"
-                    >
-                      Cancel Edit
-                    </button>
-                  </motion.div>
-                )}
-
-                {/* 5. Weekly Summary Statistics */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <GlassCard className="p-4 border-b-2 border-b-primary bg-primary/5">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Week</p>
-                    <p className="text-2xl font-black text-foreground">{weekStats.total} <span className="text-xs text-muted-foreground leading-none">HRS</span></p>
-                  </GlassCard>
-                  <GlassCard className="p-4 border-b-2 border-b-blue-500 bg-blue-500/5">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Tech Trainer</p>
-                    <p className="text-xl font-black text-foreground">{weekStats.tech} <span className="text-xs text-muted-foreground leading-none">HRS</span></p>
-                  </GlassCard>
-                  <GlassCard className="p-4 border-b-2 border-b-purple-500 bg-purple-500/5">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">BH Trainer</p>
-                    <p className="text-xl font-black text-foreground">{weekStats.behavioral} <span className="text-xs text-muted-foreground leading-none">HRS</span></p>
-                  </GlassCard>
-                  <GlassCard className="p-4 border-b-2 border-b-emerald-500 bg-emerald-500/5">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Mentorship</p>
-                    <p className="text-xl font-black text-foreground">{weekStats.mentor} <span className="text-xs text-muted-foreground leading-none">HRS</span></p>
-                  </GlassCard>
-                  <GlassCard className="p-4 border-b-2 border-b-amber-500 bg-amber-500/5">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Buddy Mentor</p>
-                    <p className="text-xl font-black text-foreground">{weekStats.buddy} <span className="text-xs text-muted-foreground leading-none">HRS</span></p>
-                  </GlassCard>
-                </div>
-
-                {selectedWeek && eachDayOfInterval({
-                  start: selectedWeek.startDate,
-                  end: addDays(selectedWeek.startDate, 4), // Monday to Friday
-                }).map((day) => {
-                  const dateStr = format(day, 'yyyy-MM-dd');
-                  const log: DayLog = localDayLogs[dateStr] || {
-                    date: dateStr,
-                    isHoliday: false,
-                    technicalTrainer: { hours: 0, notes: '' },
-                    behavioralTrainer: { hours: 0, notes: '' },
-                    mentor: { hours: 0, notes: '' },
-                    buddyMentor: { hours: 0, notes: '' }
-                  };
-                  const today = startOfToday();
-                  const isFuture = isAfter(day, today);
-                  const isToday = isSameDay(day, today);
-                  const isSaved = savedDays[dateStr];
-                  const isDisabled = isFuture || log.isHoliday || (isWeekCompleted && !isOverrideEdit);
-
-                  return (
-                    <GlassCard
-                      key={dateStr}
-                      className={cn(
-                        "relative p-8 transition-all duration-500",
-                        isToday && "ring-2 ring-primary/40 shadow-[0_0_40px_rgba(var(--primary-rgb),0.1)]",
-                        isDisabled && !isWeekCompleted && "opacity-70 grayscale-[0.5]",
-                        isWeekCompleted && "border-emerald-500/30"
-                      )}
-                      glow={isToday ? "cyan" : "none"}
-                    >
-                      {/* 6. Holiday Logic Overlay */}
-                      {log.isHoliday && (
-                        <div className="absolute inset-x-0 bottom-0 top-32 z-20 bg-background/50 backdrop-blur-[2px] rounded-b-3xl flex items-center justify-center">
-                          <div className="bg-orange-500/15 border border-orange-500/30 px-8 py-4 rounded-3xl flex items-center gap-4 shadow-xl pointer-events-none">
-                            <div className="p-3 bg-orange-500/20 rounded-2xl">
-                              <AlertCircle className="h-6 w-6 text-orange-400" />
-                            </div>
-                            <div>
-                              <p className="font-black text-orange-400 uppercase tracking-[0.2em] text-sm">Public Holiday</p>
-                              <p className="text-xs font-bold text-orange-400/70 mt-0.5">Corporate compliance: Non-working day</p>
+                      <div className="h-16 w-px bg-border/50" />
+                      <div className="flex-1 grid grid-cols-4 gap-8">
+                        {Object.entries(weekStats?.roles || {}).map(([role, hours]) => (
+                          <div key={role} className="space-y-2">
+                            <p className="text-[8px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
+                              {role.replace(/([A-Z])/g, ' $1').trim().replace('Hours', '').replace('Trainer', 'Training')}
+                            </p>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-xl font-black text-foreground">{hours}</span>
+                              <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-widest">Hrs</span>
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
-                        <div className="space-y-6">
-                          <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-4">
-                              <h4 className="text-4xl lg:text-5xl font-black text-foreground tracking-tighter uppercase leading-none">{format(day, 'EEEE')}</h4>
-                              <div className="flex flex-wrap gap-2">
-                                {isToday && (
-                                  <span className="px-3 py-1 bg-primary text-white text-[10px] font-black uppercase rounded shadow-neon-blue tracking-widest">Today</span>
-                                )}
-                                {isFuture && (
-                                  <span className="px-3 py-1 bg-muted/50 text-muted-foreground text-[10px] font-black uppercase rounded border border-border/50 flex items-center gap-1">
-                                    <Lock className="h-3 w-3" /> Future
-                                  </span>
-                                )}
-                                {isWeekCompleted && (
-                                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-400 text-[10px] font-black uppercase rounded border border-emerald-500/20 flex items-center gap-1">
-                                    <CheckCircle2 className="h-3 w-3" /> Logged
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2 text-muted-foreground font-black text-sm uppercase tracking-widest">
-                                <Calendar className="h-4 w-4 text-primary" />
-                                {format(day, 'MMMM dd, yyyy')}
-                              </div>
-                              <div className="h-4 w-px bg-border/50" />
-                              <button
-                                onClick={() => handleToggleHoliday(dateStr)}
-                                disabled={isDisabled && !log.isHoliday || isWeekCompleted}
-                                className={cn(
-                                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase tracking-widest",
-                                  log.isHoliday
-                                    ? "bg-orange-500/20 border-orange-500/40 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.1)]"
-                                    : "bg-muted/10 border-border/50 text-muted-foreground hover:border-primary/30 hover:text-primary"
-                                )}
-                              >
-                                {log.isHoliday ? (
-                                  <>
-                                    <Check className="h-3.5 w-3.5" /> Holiday Marked
-                                  </>
-                                ) : (
-                                  <>
-                                    <Calendar className="h-3.5 w-3.5" /> Mark Holiday
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {!isDisabled && (
-                          <GradientButton
-                            variant={isSaved ? "ghost" : "primary"}
-                            size="sm"
-                            icon={isSaved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-                            onClick={() => handleSaveDay(dateStr)}
-                            className={cn(
-                              "px-5 h-10",
-                              isSaved ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/5 font-bold" : "font-bold"
-                            )}
-                          >
-                            {isSaved ? "SAVED" : "SAVE DAY LOG"}
-                          </GradientButton>
-                        )}
-                      </div>
-
-                      {/* Sections Grid */}
-                      <div className="grid gap-8">
-                        {visibleSections.map((section) => (
-                          <LogRoleSection
-                            key={section.id}
-                            title={section.title}
-                            name={section.name}
-                            hours={(log as any)[section.id]?.hours || 0}
-                            notes={(log as any)[section.id]?.notes || ""}
-                            mode={(log as any)[section.id]?.mode || "IN_PERSON"}
-                            reasonVirtual={(log as any)[section.id]?.reasonVirtual || ""}
-                            disabled={isDisabled}
-                            onChangeHours={(h) => handleUpdateLog(dateStr, section.id as any, 'hours', h)}
-                            onChangeNotes={(n) => handleUpdateLog(dateStr, section.id as any, 'notes', n)}
-                            onChangeMode={(m) => handleUpdateLog(dateStr, section.id as any, 'mode', m)}
-                            onChangeReasonVirtual={(r) => handleUpdateLog(dateStr, section.id as any, 'reasonVirtual', r)}
-                          />
                         ))}
                       </div>
-                    </GlassCard>
-                  );
-                })}
+                    </div>
+                  </div>
+                </div>
 
-                {/* 11. Final Submission UI */}
+                {/* 6. Tactical Precision Grid */}
+                <div className="space-y-3">
+                  {/* Master Grid Header - Restoration of Holiday Logic */}
+                  <div className="grid grid-cols-[1fr,repeat(5,110px),100px] gap-3 px-6 pb-2 border-b border-border shadow-sm items-end">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Mission Assets</p>
+                    {selectedWeek && eachDayOfInterval({
+                      start: selectedWeek.startDate,
+                      end: addDays(selectedWeek.startDate, 4),
+                    }).map((day) => {
+                      const dateStr = format(day, 'yyyy-MM-dd');
+                      const isHoliday = localDayLogs[dateStr]?.isHoliday;
+                      return (
+                        <div key={dateStr} className="flex flex-col items-center gap-1.5">
+                          <button
+                            onClick={() => handleToggleHoliday(dateStr)}
+                            className={cn(
+                              "text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md border transition-all mb-1",
+                              isHoliday ? "bg-amber-500/20 text-amber-500 border-amber-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                            )}
+                          >
+                            {isHoliday ? "CLOSED" : "ACTIVE"}
+                          </button>
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-[0.1em] text-foreground/80 leading-none">{format(day, 'EEE')}</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-primary/70 mt-1 whitespace-nowrap">{format(day, 'MMM dd, yyyy')}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[10px] font-black uppercase tracking-widest text-center text-muted-foreground/80">TOTAL</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {visibleSections.map((section) => {
+                      const rowTotal = Object.values(localDayLogs).reduce((acc, log) =>
+                        acc + (log.isHoliday ? 0 : Number((log[section.id as keyof DayLog] as any)?.hours || 0)), 0
+                      );
+
+                      return (
+                        <GlassCard key={section.id} className="p-3 bg-muted/20 border-border hover:border-primary/20 transition-all group/row">
+                          <div className="grid grid-cols-[1fr,repeat(5,110px),100px] gap-3 items-center">
+                            {/* Role Identity */}
+                            <div className="flex items-center gap-4 px-2">
+                              <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary/60 transition-all">
+                                <Activity className="h-4 w-4" />
+                              </div>
+                              <div className="space-y-0.5">
+                                <h5 className="text-[13px] font-black text-foreground group-hover/row:text-primary transition-colors">{section.name}</h5>
+                                <p className="text-[8px] font-black text-primary/80 uppercase tracking-[0.2em]">{section.title}</p>
+                              </div>
+                            </div>
+
+                            {/* Daily Inputs */}
+                            {selectedWeek && eachDayOfInterval({
+                              start: selectedWeek.startDate,
+                              end: addDays(selectedWeek.startDate, 4),
+                            }).map((day) => {
+                              const dateStr = format(day, 'yyyy-MM-dd');
+                              const cellData = (localDayLogs[dateStr] as any)?.[section.id];
+                              const isHoliday = localDayLogs[dateStr]?.isHoliday;
+                              const isSelected = activeCell?.date === dateStr && activeCell?.role === section.id;
+
+                              return (
+                                <div
+                                  key={dateStr}
+                                  onClick={() => !isHoliday && setActiveCell({ date: dateStr, role: section.id })}
+                                  className={cn(
+                                    "h-11 rounded-xl border flex items-center justify-center relative cursor-pointer transition-all",
+                                    isHoliday ? "bg-amber-500/5 border-amber-500/10 opacity-30 cursor-default" :
+                                      isSelected ? "bg-primary/20 border-primary/50 shadow-neon-blue/10" :
+                                        "bg-muted/20 border-border hover:bg-muted/30"
+                                  )}
+                                >
+                                  <input
+                                    type="number"
+                                    value={cellData?.hours || ""}
+                                    onChange={(e) => handleUpdateLog(dateStr, section.id as any, 'hours', parseFloat(e.target.value) || 0)}
+                                    disabled={isHoliday}
+                                    placeholder="0"
+                                    className={cn(
+                                      "w-full bg-transparent text-center text-base font-black focus:outline-none placeholder:text-muted-foreground/40",
+                                      cellData?.hours > 0 ? "text-primary shadow-primary/20" : "text-muted-foreground/60"
+                                    )}
+                                  />
+                                  {cellData?.notes && (
+                                    <div className="absolute top-1 right-1 h-1 w-1 rounded-full bg-primary/60" />
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                            {/* Total Column */}
+                            <div className="flex items-center justify-center h-14 rounded-xl bg-primary/10 border border-primary/20 group/total">
+                              <span className="text-sm font-black text-primary group-hover/total:scale-110 transition-transform">{rowTotal.toFixed(1)}</span>
+                            </div>
+                          </div>
+                        </GlassCard>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 7. Tactical Contribution Terminal */}
+                <AnimatePresence mode="wait">
+                  {activeCell ? (
+                    <motion.div
+                      key="terminal"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                    >
+                      <GlassCard className="border-primary/20 bg-muted/30 shadow-2xl relative overflow-hidden backdrop-blur-3xl">
+                        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                          <Activity className="h-40 w-40 text-primary" />
+                        </div>
+
+                        <div className="p-8 space-y-8">
+                          <div className="flex items-center gap-5">
+                            <div className="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+                              <Users className="h-7 w-7" />
+                            </div>
+                            <div>
+                              <h4 className="text-xl font-black text-foreground leading-tight mb-1">{visibleSections.find(s => s.id === activeCell?.role)?.name}</h4>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[9px] font-black uppercase text-primary tracking-widest">{visibleSections.find(s => s.id === activeCell?.role)?.title}</p>
+                                <span className="h-1 w-1 rounded-full bg-border" />
+                                <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-muted border border-border">
+                                  <Clock className="h-3 w-3 text-muted-foreground/40" />
+                                  <p className="text-[9px] font-black uppercase text-muted-foreground/80 tracking-widest">
+                                    {activeCell ? format(parseISO(activeCell.date), 'MMM dd, yyyy') : ''}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <p className="text-[9px] font-black uppercase text-muted-foreground/40 tracking-widest">Operation Mode</p>
+                            <div className="flex gap-2">
+                              {['IN_PERSON', 'VIRTUAL'].map((m) => (
+                                <button
+                                  key={m}
+                                  onClick={() => activeCell && handleUpdateLog(activeCell.date, activeCell.role as any, 'mode', m)}
+                                  className={cn(
+                                    "flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                                    activeCell && (localDayLogs[activeCell.date][activeCell.role as keyof DayLog] as any)?.mode === m
+                                      ? "bg-primary text-primary-foreground border-primary shadow-neon-blue/40"
+                                      : "bg-muted text-muted-foreground border-border hover:border-primary/20 hover:bg-muted/50"
+                                  )}
+                                >
+                                  {m === 'VIRTUAL' ? 'Virtual' : 'In-Person'}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 space-y-6">
+                          <div className="space-y-4">
+                            <label className="text-[11px] font-black text-muted-foreground/40 uppercase tracking-widest flex items-center gap-3">
+                              <Target className="h-4 w-4 text-primary" /> Mission Documentation
+                            </label>
+                            <textarea
+                              value={activeCell ? (localDayLogs[activeCell.date][activeCell.role as keyof DayLog] as any)?.notes || "" : ""}
+                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => activeCell && handleUpdateLog(activeCell.date, activeCell.role as any, 'notes', e.target.value)}
+                              placeholder="Execution details..."
+                              className="w-full h-32 bg-muted border border-border rounded-2xl p-6 text-sm focus:outline-none focus:border-primary/40 transition-all resize-none shadow-inner text-foreground placeholder:text-muted-foreground/20"
+                            />
+                          </div>
+
+                          {activeCell && (localDayLogs[activeCell.date][activeCell.role as keyof DayLog] as any)?.mode === 'VIRTUAL' && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="space-y-3"
+                            >
+                              <label className="text-[11px] font-black text-amber-500/60 uppercase tracking-widest flex items-center gap-3">
+                                <Info className="h-4 w-4" /> Reason for Virtual Connect
+                              </label>
+                              <input
+                                type="text"
+                                value={(localDayLogs[activeCell.date][activeCell.role as keyof DayLog] as any)?.reasonVirtual || ""}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => activeCell && handleUpdateLog(activeCell.date, activeCell.role as any, 'reasonVirtual', e.target.value)}
+                                placeholder="Explain why a virtual session was required..."
+                                className="w-full h-12 bg-amber-500/5 border border-amber-500/20 rounded-xl px-5 text-sm focus:outline-none focus:border-amber-500/40 transition-all text-amber-200 placeholder:text-amber-500/20"
+                              />
+                            </motion.div>
+                          )}
+
+                          <div className="flex items-center justify-end gap-6 pt-6 border-t border-border/50">
+                            <button
+                              onClick={() => setActiveCell(null)}
+                              className="text-[10px] font-black text-muted-foreground/40 hover:text-muted-foreground uppercase tracking-widest transition-all"
+                            >
+                              CLOSE TERMINAL
+                            </button>
+                            <button
+                              onClick={() => activeCell && handleSaveDay(activeCell.date)}
+                              className="flex items-center gap-3 px-8 py-3 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
+                            >
+                              <Check className="h-4 w-4" /> COMMIT LOCAL SYNC
+                            </button>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  ) : (
+                    <div className="py-8 flex flex-col items-center justify-center text-center">
+                      <div className={cn(
+                        "px-8 py-4 rounded-2xl border flex items-center gap-4 transition-all duration-500",
+                        isWeekCompleted
+                          ? "bg-emerald-500/5 border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.05)]"
+                          : "bg-muted border-border group hover:bg-muted/50"
+                      )}>
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
+                          isWeekCompleted ? "bg-emerald-500/10 text-emerald-400" : "bg-muted-foreground/80 group-hover:text-primary group-hover:bg-primary/10"
+                        )}>
+                          {isWeekCompleted ? <CheckCircle2 className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5 animate-pulse" />}
+                        </div>
+                        <div className="text-left">
+                          <p className={cn(
+                            "text-[10px] font-black uppercase tracking-[0.2em]",
+                            isWeekCompleted ? "text-emerald-400" : "text-muted-foreground/70 group-hover:text-muted-foreground/90"
+                          )}>
+                            {isWeekCompleted ? "Sequence Deployment Verified" : "Data Integrity System Ready"}
+                          </p>
+                          <p className="text-[11px] font-bold text-muted-foreground/80">
+                            {isWeekCompleted
+                              ? "This week is archived and legally locked."
+                              : "Select any data point to inspect or edit telemetry."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                {/* 8. Final Submission Workflow */}
                 {!isWeekCompleted && (
-                  <GlassCard className="p-12 text-center bg-gradient-to-br from-primary/10 via-background to-accent/5 border-primary/30 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
-                    <div className="max-w-2xl mx-auto space-y-8 relative z-10">
-                      <div className="p-5 bg-primary/10 rounded-3xl w-fit mx-auto border border-primary/20 shadow-neon-blue/20">
-                        <Send className="h-10 w-10 text-primary" />
-                      </div>
-                      <div className="space-y-3">
-                        <h3 className="text-4xl font-extrabold text-white tracking-tight">Ready to Finalize Week {selectedWeek?.weekNumber}?</h3>
-                        <p className="text-muted-foreground font-medium text-lg leading-relaxed">
-                          Submitting will lock the current week's records for mandatory training compliance and auditor review.
-                        </p>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <GradientButton
-                          variant="primary"
-                          size="md"
-                          className="w-full sm:w-72 font-black shadow-neon-blue transition-all h-12"
-                          onClick={handleFinalSubmit}
-                          disabled={submitWeeklyMutation.isPending}
-                          icon={<Send className="h-4 w-4" />}
-                          iconPosition="right"
-                        >
-                          SUBMIT WEEKLY LOGS
-                        </GradientButton>
-                      </div>
-                      <div className="pt-4 flex items-center justify-center gap-8 text-muted-foreground">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                          <ShieldCheck className="h-4 w-4 text-emerald-400" /> Compliance Secure
+                  <GlassCard className="p-8 border-primary/30 bg-primary/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                          <Send className="h-6 w-6" />
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                          <Lock className="h-4 w-4 text-primary" /> Immutable Records
+                        <div>
+                          <h3 className="text-xl font-black text-foreground tracking-tight">Finalize Sequence</h3>
+                          <p className="text-xs text-muted-foreground font-medium">Prepare Week {selectedWeek?.weekNumber} for immutable record submission.</p>
                         </div>
                       </div>
+                      <GradientButton
+                        variant="primary"
+                        onClick={handleFinalSubmit}
+                        disabled={submitWeeklyMutation.isPending}
+                        className="px-8 py-3 font-black text-xs"
+                      >
+                        EXECUTE FINAL SYNC
+                      </GradientButton>
                     </div>
                   </GlassCard>
                 )}
@@ -1263,143 +1275,7 @@ export const DailyEfforts = () => {
             )}
           </AnimatePresence>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
-
-interface LogRoleSectionProps {
-  title: string;
-  name: string;
-  hours: number;
-  notes: string;
-  mode: 'VIRTUAL' | 'IN_PERSON';
-  reasonVirtual: string;
-  disabled: boolean;
-  onChangeHours: (val: number) => void;
-  onChangeNotes: (val: string) => void;
-  onChangeMode: (val: 'VIRTUAL' | 'IN_PERSON') => void;
-  onChangeReasonVirtual: (val: string) => void;
-}
-
-const LogRoleSection = ({
-  title,
-  name,
-  hours,
-  notes,
-  mode,
-  reasonVirtual,
-  disabled,
-  onChangeHours,
-  onChangeNotes,
-  onChangeMode,
-  onChangeReasonVirtual
-}: LogRoleSectionProps) => (
-  <div className={cn(
-    "relative flex flex-col lg:grid lg:grid-cols-[220px,140px,1fr] gap-8 p-8 rounded-[2rem] border transition-all duration-500 group",
-    hours > 0
-      ? "bg-primary/[0.03] border-primary/20 shadow-[0_10px_40px_-15px_rgba(var(--primary-rgb),0.1)]"
-      : "bg-muted/5 border-border/40 hover:border-primary/20 hover:bg-muted/10",
-    disabled && "opacity-40 grayscale pointer-events-none"
-  )}>
-    {/* Decorative corner accent */}
-    {hours > 0 && (
-      <div className="absolute top-0 right-0 p-3">
-        <Sparkles className="h-4 w-4 text-primary/40" />
-      </div>
-    )}
-
-    <div className="flex flex-col justify-center">
-      <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-2">{title}</p>
-      <div className="space-y-3">
-        <h5 className="text-base font-black text-foreground leading-tight">{name}</h5>
-
-        {/* Mode Selector */}
-        <div className="flex items-center gap-1.5 p-1 bg-background/40 border border-border/40 rounded-xl w-fit">
-          <button
-            onClick={() => onChangeMode('IN_PERSON')}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all",
-              mode === 'IN_PERSON'
-                ? "bg-primary text-white shadow-neon-blue"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            In-Person
-          </button>
-          <button
-            onClick={() => onChangeMode('VIRTUAL')}
-            className={cn(
-              "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg transition-all",
-              mode === 'VIRTUAL'
-                ? "bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Virtual
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div className="flex flex-col justify-center">
-      <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-2">
-        <Clock className="h-3 w-3" /> Hours (Max 9.0)
-      </label>
-      <div className="relative group/input">
-        <input
-          type="number"
-          value={hours || ""}
-          onChange={(e) => onChangeHours(parseFloat(e.target.value) || 0)}
-          className={cn(
-            "w-full h-14 bg-background/40 border border-border/40 rounded-2xl px-5 text-lg font-black focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all text-center placeholder:text-muted-foreground/20",
-            hours > 0 && "border-primary/30 text-primary"
-          )}
-          placeholder="0.0"
-          min="0"
-          max="9"
-          step="0.5"
-        />
-        {/* Unit indicator */}
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/30 group-hover/input:text-primary transition-colors">HRS</span>
-      </div>
-    </div>
-
-    <div className="flex flex-col justify-center">
-      <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-2">
-        <Target className="h-3 w-3" /> Work Description
-      </label>
-      <div className="relative group/textarea">
-        <textarea
-          value={notes}
-          onChange={(e) => onChangeNotes(e.target.value)}
-          className={cn(
-            "w-full h-24 lg:h-20 bg-background/40 border border-border/40 rounded-2xl p-5 text-sm font-bold resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all custom-scrollbar placeholder:text-muted-foreground/30",
-            notes.length > 0 && "border-primary/20",
-            mode === 'VIRTUAL' && "h-16 lg:h-12"
-          )}
-          placeholder={`Document ${title.toLowerCase()} contributions...`}
-        />
-      </div>
-
-      {mode === 'VIRTUAL' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-3"
-        >
-          <label className="text-[10px] font-black text-amber-500/80 uppercase tracking-widest mb-2 flex items-center gap-2">
-            <Info className="h-3 w-3" /> Reason for Virtual Connect
-          </label>
-          <input
-            type="text"
-            value={reasonVirtual}
-            onChange={(e) => onChangeReasonVirtual(e.target.value)}
-            className="w-full h-10 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all placeholder:text-amber-500/20"
-            placeholder="Explain why virtual session was necessary..."
-          />
-        </motion.div>
-      )}
-    </div>
-  </div>
-);

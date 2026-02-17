@@ -17,6 +17,8 @@ public interface StakeholderEffortRepository extends JpaRepository<StakeholderEf
         List<StakeholderEffort> findByCohortIdAndEffortDateBetween(Long cohortId, LocalDate startDate,
                         LocalDate endDate);
 
+        List<StakeholderEffort> findByEffortDateBetween(LocalDate startDate, LocalDate endDate);
+
         List<StakeholderEffort> findByTrainerMentorId(Long trainerMentorId);
 
         @Query("SELECT SUM(se.effortHours) FROM StakeholderEffort se WHERE se.cohort.id = :cohortId AND se.effortDate BETWEEN :startDate AND :endDate")

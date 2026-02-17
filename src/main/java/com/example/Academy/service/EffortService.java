@@ -82,7 +82,7 @@ public class EffortService {
         StakeholderEffort savedEffort = effortRepository.save(effort);
 
         // Update weekly summary
-        updateWeeklySummary(cohort, effort.getEffortDate(), updatedBy.getName());
+        updateWeeklySummary(cohort, effort.getEffortDate(), updatedBy.getName(), updatedBy.getAvatar());
 
         // Send email notification (to Admins only)
         emailService.sendDailyEffortNotification(savedEffort);
@@ -128,10 +128,11 @@ public class EffortService {
         // Update weekly summary after deletion
         updateWeeklySummary(effort.getCohort(),
                 effort.getEffortDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
-                "System (After Deletion)");
+                "System (After Deletion)", null);
     }
 
-    public void updateWeeklySummary(Cohort cohort, LocalDate weekStart, String submittedByName) {
+    public void updateWeeklySummary(Cohort cohort, LocalDate weekStart, String submittedByName,
+            String submittedByAvatar) {
         LocalDate weekEnd = weekStart.plusDays(6);
 
         // Calculate total hours
@@ -149,7 +150,7 @@ public class EffortService {
         Double buddyHours = effortRepository.sumEffortHoursByCohortRoleAndDateRange(cohort.getId(),
                 StakeholderEffort.Role.BUDDY_MENTOR, weekStart, weekEnd);
 
-        updateWeeklySummaryWithTotals(cohort, weekStart, submittedByName, totalHours,
+        updateWeeklySummaryWithTotals(cohort, weekStart, submittedByName, submittedByAvatar, totalHours,
                 BigDecimal.valueOf(techHours != null ? techHours : 0),
                 BigDecimal.valueOf(bhHours != null ? bhHours : 0),
                 BigDecimal.valueOf(mentorHours != null ? mentorHours : 0),
@@ -158,6 +159,7 @@ public class EffortService {
     }
 
     private void updateWeeklySummaryWithTotals(Cohort cohort, LocalDate weekStart, String submittedByName,
+            String submittedByAvatar,
             BigDecimal totalHours, BigDecimal techHours, BigDecimal bhHours, BigDecimal mentorHours,
             BigDecimal buddyHours, List<LocalDate> holidays) {
         LocalDate weekEnd = weekStart.plusDays(6);
@@ -193,6 +195,7 @@ public class EffortService {
 
         // Set submission metadata
         summary.setSubmittedBy(submittedByName);
+        summary.setSubmittedByAvatar(submittedByAvatar);
         summary.setSubmittedAt(LocalDateTime.now());
 
         WeeklySummary savedSummary = weeklySummaryRepository.save(summary);
@@ -204,10 +207,27 @@ public class EffortService {
     }
 
     public List<WeeklySummary> getWeeklySummariesByCohort(Long cohortId) {
-        // This would need a custom query, but for now return all and filter in service
-        return weeklySummaryRepository.findAll().stream()
-                .filter(summary -> summary.getCohort().getId().equals(cohortId))
-                .toList();
+        List<WeeklySummary> summaries = weeklySummaryRepository.findByCohortId(cohortId);
+
+        if (summaries.isEmpty()) {
+            return summaries;
+        }
+
+        // Optimization: Fetch all users once if we need to enrich many summaries
+        List<User> allUsers = userRepository.findAll();
+
+        // Enrich with current avatars if missing
+        for (WeeklySummary summary : summaries) {
+            if (summary.getSubmittedByAvatar() == null && summary.getSubmittedBy() != null) {
+                String submittedName = summary.getSubmittedBy().trim();
+
+                allUsers.stream()
+                        .filter(u -> u.getName() != null && u.getName().trim().equalsIgnoreCase(submittedName))
+                        .findFirst()
+                        .ifPresent(u -> summary.setSubmittedByAvatar(u.getAvatar()));
+            }
+        }
+        return summaries;
     }
 
     public Optional<WeeklySummary> getWeeklySummary(Long cohortId, LocalDate weekStartDate) {
@@ -308,7 +328,8 @@ public class EffortService {
         }
         totalH = techH.add(bhH).add(mentorH).add(buddyH);
 
-        updateWeeklySummaryWithTotals(cohort, dto.getWeekStartDate(), submittedBy.getName(), totalH, techH, bhH,
+        updateWeeklySummaryWithTotals(cohort, dto.getWeekStartDate(), submittedBy.getName(),
+                submittedBy.getAvatar(), totalH, techH, bhH,
                 mentorH, buddyH, dto.getHolidays());
 
         // Send In-App notification to Admins for weekly summary

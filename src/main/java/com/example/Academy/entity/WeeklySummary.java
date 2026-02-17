@@ -53,6 +53,9 @@ public class WeeklySummary {
     @Column(name = "submitted_by")
     private String submittedBy;
 
+    @Column(name = "submitted_by_avatar", columnDefinition = "LONGTEXT")
+    private String submittedByAvatar;
+
     // Constructors
     public WeeklySummary() {
     }
@@ -167,6 +170,14 @@ public class WeeklySummary {
 
     public void setSubmittedBy(String submittedBy) {
         this.submittedBy = submittedBy;
+    }
+
+    public String getSubmittedByAvatar() {
+        return submittedByAvatar;
+    }
+
+    public void setSubmittedByAvatar(String submittedByAvatar) {
+        this.submittedByAvatar = submittedByAvatar;
     }
 
     public String getHolidays() {

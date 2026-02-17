@@ -38,6 +38,7 @@ export interface WeeklySummary {
   mentorHours: number;
   buddyMentorHours: number;
   submittedBy?: string;
+  submittedByAvatar?: string;
   submittedAt?: string;
   holidays?: string;
 }
