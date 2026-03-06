@@ -68,10 +68,6 @@ public class CandidateService {
                 cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
                 changed = true;
             }
-            if (savedCandidate.getStatus() == Candidate.Status.ACTIVE) {
-                cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
-                changed = true;
-            }
             if (savedCandidate.getStatus() == Candidate.Status.ACTIVE
                     || savedCandidate.getStatus() == Candidate.Status.COMPLETED) {
                 cohort.setTotalGencCount(cohort.getTotalGencCount() + 1);
@@ -121,10 +117,6 @@ public class CandidateService {
                         .orElse(null);
                 if (cohort != null) {
                     boolean changed = false;
-                    if (c.getStatus() == Candidate.Status.ACTIVE) {
-                        cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
-                        changed = true;
-                    }
                     if (c.getStatus() == Candidate.Status.ACTIVE) {
                         cohort.setActiveGencCount(cohort.getActiveGencCount() + 1);
                         changed = true;
@@ -223,10 +215,6 @@ public class CandidateService {
             if (c.getCohort() != null) {
                 com.example.Academy.entity.Cohort cohort = c.getCohort();
                 boolean changed = false;
-                if (c.getStatus() == Candidate.Status.ACTIVE) {
-                    cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
-                    changed = true;
-                }
                 if (c.getStatus() == Candidate.Status.ACTIVE) {
                     cohort.setActiveGencCount(Math.max(0, cohort.getActiveGencCount() - 1));
                     changed = true;
